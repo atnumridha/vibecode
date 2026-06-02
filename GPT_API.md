@@ -1,12 +1,12 @@
-#ChatGPT Backend API Notes
+# ChatGPT Backend API Notes
 
 This README documents how to call the Codex backend used by the local Codex Desktop/CLI install on this machine. These are internal ChatGPT Codex backend routes, not the same thing as the public OpenAI Platform API. They can change without notice.
 
 ## Files Used
 
-- Auth file: `/Users/atanumridha/.codex/auth.json`
-- Installation id: `/Users/atanumridha/.codex/installation_id`
-- Model cache: `/Users/atanumridha/.codex/models_cache.json`
+- Auth file: `/Users/<OS Username>/.codex/auth.json`
+- Installation id: `/Users/<OS Username>/.codex/installation_id`
+- Model cache: `/Users/<OS Username>/.codex/models_cache.json`
 - Current Codex client version in cache: `0.136.0`
 
 ## Token Guide
@@ -14,7 +14,7 @@ This README documents how to call the Codex backend used by the local Codex Desk
 Use `.tokens.access_token` for Codex backend calls:
 
 ```bash
-TOKEN="$(jq -r '.tokens.access_token' /Users/atanumridha/.codex/auth.json)"
+TOKEN="$(jq -r '.tokens.access_token' /Users/<OS Username>/.codex/auth.json)"
 ```
 
 Do not use `.tokens.refresh_token` as the bearer token for API calls. It is used by Codex to obtain a new access token when the current access token expires. Treat it like a password.
@@ -26,7 +26,7 @@ Use `OPENAI_API_KEY` only for the public OpenAI API at `https://api.openai.com/v
 ## Setup Variables
 
 ```bash
-CODEX_HOME="/Users/atanumridha/.codex"
+CODEX_HOME="$HOME/.codex"
 AUTH_JSON="$CODEX_HOME/auth.json"
 TOKEN="$(jq -r '.tokens.access_token' "$AUTH_JSON")"
 INSTALL_ID="$(cat "$CODEX_HOME/installation_id")"
