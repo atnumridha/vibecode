@@ -35,6 +35,7 @@ import type { VibeCodexProviderCatalogResponse } from './providerCatalogProtocol
 import type { VibeCodexProviderStatusResponse } from './providerStatusProtocol';
 import { redactSensitiveText } from './secretFilters';
 import type { VibeCodexSafetyStatusResponse } from './safetyStatusProtocol';
+import type { VibeCodexSessionExportResponse } from './sessionExportProtocol';
 import type { VibeCodexSessionHistoryStatusResponse } from './sessionHistoryStatusProtocol';
 import type { VibeCodexSlashCommandStatusResponse } from './slashCommandStatusProtocol';
 import type { VibeCodexTerminalCommandValidationResponse } from './terminalCommandValidationProtocol';
@@ -87,6 +88,7 @@ export interface VibeCodexDeliveryBarInput {
 	readonly taskStartStatus?: VibeCodexTaskStartStatusResponse;
 	readonly externalIntakeStatus?: VibeCodexExternalIntakeStatusResponse;
 	readonly sessionHistoryStatus?: VibeCodexSessionHistoryStatusResponse;
+	readonly sessionExportStatus?: VibeCodexSessionExportResponse;
 	readonly providerCatalogStatus?: VibeCodexProviderCatalogResponse;
 	readonly providerStatus?: VibeCodexProviderStatusResponse;
 	readonly planCanvasStatus?: VibeCodexPlanCanvasStatusResponse;
@@ -174,13 +176,13 @@ function planCheck(plan: VibeCodexDeliveryBarInput['plan']): VibeCodexDeliveryBa
 }
 
 function nativePromptSurfaceCheck(input: VibeCodexDeliveryBarInput): VibeCodexDeliveryBarCheck {
-	if (!input.extensionInstallStatus && !input.inlinePromptStatus && !input.taskStartStatus && !input.externalIntakeStatus && !input.sessionHistoryStatus && !input.providerCatalogStatus && !input.providerStatus) {
+	if (!input.extensionInstallStatus && !input.inlinePromptStatus && !input.taskStartStatus && !input.externalIntakeStatus && !input.sessionHistoryStatus && !input.sessionExportStatus && !input.providerCatalogStatus && !input.providerStatus) {
 		return {
 			id: 'native-prompt-surface',
 			title: 'Native prompt surface',
 			required: false,
 			status: 'skipped',
-			detail: 'No extension install, inline prompt, task intake, session history, or provider status has been requested yet.',
+			detail: 'No extension install, inline prompt, task intake, session history/export, or provider status has been requested yet.',
 		};
 	}
 	const blockers = nativePromptSurfaceBlockers(input);
@@ -192,6 +194,7 @@ function nativePromptSurfaceCheck(input: VibeCodexDeliveryBarInput): VibeCodexDe
 		input.taskStartStatus,
 		input.externalIntakeStatus,
 		input.sessionHistoryStatus,
+		input.sessionExportStatus,
 		input.providerCatalogStatus,
 		input.providerStatus,
 	].filter(Boolean).length;
@@ -201,7 +204,7 @@ function nativePromptSurfaceCheck(input: VibeCodexDeliveryBarInput): VibeCodexDe
 		required: true,
 		status: ready ? 'passed' : blockers.length ? 'failed' : 'pending',
 		detail: ready
-			? `${evidenceCount} prompt-surface status${evidenceCount === 1 ? '' : 'es'} prove installable VSIX entrypoints, Ctrl/Cmd+K context, task intake, session history, and provider/model routing.`
+			? `${evidenceCount} prompt-surface status${evidenceCount === 1 ? '' : 'es'} prove installable VSIX entrypoints, Ctrl/Cmd+K context, task intake, chat history/export, and provider/model routing.`
 			: [...blockers, ...pending].slice(0, 4).map(redactSensitiveText).join('; '),
 	};
 }
@@ -255,6 +258,21 @@ function nativePromptSurfaceBlockers(input: VibeCodexDeliveryBarInput): readonly
 			blockers.push('Session history has no active session.');
 		}
 	}
+	const sessionExport = input.sessionExportStatus;
+	if (sessionExport) {
+		if (!sessionExport.ok) {
+			blockers.push(sessionExport.message);
+		}
+		if (!sessionExport.selectedActive) {
+			blockers.push('Session export does not target the active chat session.');
+		}
+		if (!sessionExport.markdown || sessionExport.counts.returnedChars === 0 || sessionExport.counts.markdownChars === 0) {
+			blockers.push('Session export did not return redacted Markdown.');
+		}
+		if (!sessionExport.guardrails.some(line => /never.*approv/i.test(line))) {
+			blockers.push('Session export guardrails do not state old sessions never approve current tasks.');
+		}
+	}
 	const providerCatalog = input.providerCatalogStatus;
 	if (providerCatalog) {
 		if (providerCatalog.counts.total === 0 || providerCatalog.counts.openAiCompatible === 0 || providerCatalog.counts.local === 0) {
@@ -286,6 +304,9 @@ function nativePromptSurfacePending(input: VibeCodexDeliveryBarInput): readonly 
 	const sessions = input.sessionHistoryStatus;
 	if (sessions && sessions.counts.planning + sessions.counts.approved + sessions.counts.terminal + sessions.counts.diffReview + sessions.counts.rollback === 0 && sessions.counts.completed === 0) {
 		pending.push('Session history is available but has no planning, approved, execution, review, rollback, or completed session state yet.');
+	}
+	if (input.sessionExportStatus?.truncated) {
+		pending.push('Session export is available but truncated by the requested character cap.');
 	}
 	return pending;
 }

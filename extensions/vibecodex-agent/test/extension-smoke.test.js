@@ -73,6 +73,7 @@ const { normalizeWebFetchRequest } = require('../out/webFetchProtocol');
 const { createWorkspaceReadEvidenceEvent, createWorkspaceReadStatusResponse, normalizeWorkspaceReadStatusRequest } = require('../out/workspaceReadStatusProtocol');
 const { createWorkspaceSandboxStatusResponse, normalizeWorkspaceSandboxStatusRequest } = require('../out/workspaceSandboxStatusProtocol');
 const { createWorkflowStatusResponse, normalizeWorkflowStatusRequest } = require('../out/workflowStatusProtocol');
+const { createSessionExportResponse, normalizeSessionExportRequest } = require('../out/sessionExportProtocol');
 const { createSessionHistoryStatusResponse, normalizeSessionHistoryStatusRequest } = require('../out/sessionHistoryStatusProtocol');
 const packageManifest = require('../package.json');
 
@@ -797,6 +798,25 @@ assert.equal(sessionHistoryStatus.counts.tabs, 1);
 assert.equal(sessionHistoryStatus.counts.activeSessions, 1);
 assert.equal(sessionHistoryStatus.sessions[0].provider.label, 'Ollama');
 assert.equal(JSON.stringify(sessionHistoryStatus).includes('sk-live-secret-value'), false);
+
+const sessionExportStatus = createSessionExportResponse(normalizeSessionExportRequest({
+	jsonrpc: '2.0',
+	id: 'session-export-1',
+	method: 'agent/exportSession',
+	params: { active: true, maxChars: 20000 },
+}), {
+	history: [sessionSnapshot],
+	activeSessionId: sessionSnapshot.id,
+});
+assert.equal(sessionExportStatus.ok, true);
+assert.equal(sessionExportStatus.selectedActive, true);
+assert.equal(sessionExportStatus.truncated, false);
+assert.equal(sessionExportStatus.counts.sessions, 1);
+assert.equal(sessionExportStatus.counts.transcriptEvents, 2);
+assert.equal(sessionExportStatus.markdown.includes('# Vibe Codex Session'), true);
+assert.equal(sessionExportStatus.markdown.includes('## Plan'), true);
+assert.equal(sessionExportStatus.guardrails.some(line => /never.*approval/i.test(line)), true);
+assert.equal(JSON.stringify(sessionExportStatus).includes('sk-live-secret-value'), false);
 
 const planCanvasStatus = createPlanCanvasStatusResponse(normalizePlanCanvasStatusRequest({
 	jsonrpc: '2.0',
@@ -1633,6 +1653,7 @@ const deliveryBarInput = {
 	taskStartStatus,
 	externalIntakeStatus,
 	sessionHistoryStatus,
+	sessionExportStatus,
 	providerCatalogStatus,
 	providerStatus,
 	planCanvasStatus,
