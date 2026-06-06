@@ -153,7 +153,7 @@ const path = require('path') as {
 };
 const process = require('process') as { readonly env: Record<string, string | undefined> };
 
-const extensionViewId = 'vibecodex.agent.extensionView';
+const extensionViewId = 'vibecodex-agent-extension-view';
 const maxMentionSuggestionFiles = 80;
 const maxMentionSuggestionFolders = 24;
 const mentionSuggestionExclude = '{**/.git/**,**/node_modules/**,**/out/**,**/dist/**,**/build/**,**/.next/**,**/.turbo/**,**/.vscode-test/**}';
@@ -550,7 +550,7 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 	}
 
 	private async revealExtensionView(): Promise<void> {
-		await vscode.commands.executeCommand('workbench.view.extension.vibecodex.agent.extensionContainer');
+		await vscode.commands.executeCommand('workbench.view.extension.vibecodex-agent-extension-container');
 	}
 
 	async runNativeOrShowFallback(command: string, label: string): Promise<void> {
@@ -902,7 +902,7 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			await this.queueTaskBoardPrompt(prepared.mode, prepared.prompt, [], prepared.slashCommand);
 			return;
 		}
-		await vscode.commands.executeCommand('workbench.view.extension.vibecodex.agent.extensionContainer');
+		await vscode.commands.executeCommand('workbench.view.extension.vibecodex-agent-extension-container');
 		this.resetTaskCheckpoint();
 		this.clearExecutionAuthorization();
 		this.lastTaskCompletionResponse = undefined;

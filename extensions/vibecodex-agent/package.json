@@ -25,7 +25,7 @@
     "workspace"
   ],
   "activationEvents": [
-    "onView:vibecodex.agent.extensionView",
+    "onView:vibecodex-agent-extension-view",
     "onCommand:vibecodex.extension.openAgent",
     "onCommand:vibecodex.extension.login",
     "onCommand:vibecodex.extension.configureProvider",
@@ -194,16 +194,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "vibecodex.agent.extensionContainer",
+          "id": "vibecodex-agent-extension-container",
           "title": "Vibe Codex",
           "icon": "media/vibecodex.svg"
         }
       ]
     },
     "views": {
-      "vibecodex.agent.extensionContainer": [
+      "vibecodex-agent-extension-container": [
         {
-          "id": "vibecodex.agent.extensionView",
+          "id": "vibecodex-agent-extension-view",
           "name": "Agent",
           "type": "webview"
         }
@@ -468,22 +468,22 @@
       "view/title": [
         {
           "command": "vibecodex.extension.openAgent",
-          "when": "view == vibecodex.agent.extensionView",
+          "when": "view == vibecodex-agent-extension-view",
           "group": "navigation"
         },
         {
           "command": "vibecodex.extension.configureProvider",
-          "when": "view == vibecodex.agent.extensionView",
+          "when": "view == vibecodex-agent-extension-view",
           "group": "navigation"
         },
         {
           "command": "vibecodex.extension.connectBackend",
-          "when": "view == vibecodex.agent.extensionView",
+          "when": "view == vibecodex-agent-extension-view",
           "group": "navigation"
         },
         {
           "command": "vibecodex.extension.restartBackend",
-          "when": "view == vibecodex.agent.extensionView",
+          "when": "view == vibecodex-agent-extension-view",
           "group": "navigation"
         }
       ],
@@ -517,6 +517,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/atnumridha/vibecode.git"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "7.0.0-dev.20260527.2",
+    "@vscode/vsce": "3.6.1"
   },
   "bugs": {
     "url": "https://github.com/atnumridha/vibecode/issues"

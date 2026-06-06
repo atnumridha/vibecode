@@ -10,7 +10,16 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const vsce = require('../../../build/node_modules/@vscode/vsce');
+
+function loadVsce() {
+	try {
+		return require('@vscode/vsce');
+	} catch {
+		return require('../../../build/node_modules/@vscode/vsce');
+	}
+}
+
+const vsce = loadVsce();
 
 const extensionRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = require(resolve(extensionRoot, 'package.json'));

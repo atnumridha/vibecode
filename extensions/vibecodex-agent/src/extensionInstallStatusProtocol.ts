@@ -274,9 +274,9 @@ function createFeatures(input: {
 	const viewContainers = isRecord(input.contributes.viewsContainers) ? input.contributes.viewsContainers : {};
 	const activitybar = Array.isArray(viewContainers.activitybar) ? viewContainers.activitybar : [];
 	const views = isRecord(input.contributes.views) ? input.contributes.views : {};
-	const hasAgentViewContainer = activitybar.some(item => isRecord(item) && stringValue(item.id) === 'vibecodex.agent.extensionContainer');
-	const hasAgentView = Array.isArray(views['vibecodex.agent.extensionContainer'])
-		&& views['vibecodex.agent.extensionContainer'].some(item => isRecord(item) && stringValue(item.id) === 'vibecodex.agent.extensionView');
+	const hasAgentViewContainer = activitybar.some(item => isRecord(item) && stringValue(item.id) === 'vibecodex-agent-extension-container');
+	const hasAgentView = Array.isArray(views['vibecodex-agent-extension-container'])
+		&& views['vibecodex-agent-extension-container'].some(item => isRecord(item) && stringValue(item.id) === 'vibecodex-agent-extension-view');
 	const providerConfigKeys = [
 		'vibeCodex.extension.codexCommand',
 		'vibeCodex.extension.transport',
@@ -355,7 +355,7 @@ function createFeatures(input: {
 		feature('standalone-vsix-description', 'Standalone VSIX description', /installable.*vs code.*vsix|vs code.*vsix|vsix/i.test(input.description ?? ''), 'The manifest description advertises the external VS Code VSIX install surface.'),
 		feature('main-runtime-bundle', 'Main runtime bundle', input.main === './out/extension', 'The extension host entrypoint is the compiled ./out/extension bundle.'),
 		feature('extension-kind', 'UI/workspace extension kind', input.extensionKind.includes('ui') && input.extensionKind.includes('workspace'), 'The same VSIX can run as UI and workspace extension kind for local and remote workspaces.'),
-		feature('activation-routes', 'Activation routes', input.activationEvents.includes('onView:vibecodex.agent.extensionView') && nativeAliases.every(event => input.activationEvents.includes(event)), 'View, URI, and native vibecodex.* command aliases wake the same sidebar surface.'),
+		feature('activation-routes', 'Activation routes', input.activationEvents.includes('onView:vibecodex-agent-extension-view') && nativeAliases.every(event => input.activationEvents.includes(event)), 'View, URI, and native vibecodex.* command aliases wake the same sidebar surface.'),
 		feature('command-contributions', 'Command contributions', requiredCommands.every(command => input.commands.includes(command)), 'Open Agent, Ctrl/Cmd+K inline prompt, terminal, and bridge lifecycle commands are contributed.'),
 		feature('mode-entrypoints', 'Eight standard mode entrypoints', modeCommands.every(command => input.commands.includes(command)) && hasModeCommandPaletteEntries, 'Plan, Ask, Manual, Act, Agent, Debug, Review, and Custom modes are visible installable commands and command-palette entries.'),
 		feature('inline-shortcut', 'Ctrl/Cmd+K inline prompt shortcut', hasInlinePromptKeybinding, 'The installable extension binds Ctrl+K and Cmd+K to the Vibe Codex inline prompt only while an editable editor is focused.'),
