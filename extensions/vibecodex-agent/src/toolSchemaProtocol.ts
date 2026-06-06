@@ -631,6 +631,10 @@ const toolSchemaDefinitions: readonly ToolSchemaDefinition[] = [
 		maxEvents: { type: 'integer', minimum: 0, maximum: 80, default: 20 },
 		direction: { type: 'string', enum: ['in', 'out', 'status', 'error'], description: 'Optional event direction filter.' },
 	})),
+	def('runtime_readiness_status', 'Runtime readiness status', 'context', 'Inspect combined provider/model route, backend launch, bridge connection, transport health, backend handshake, and protocol health readiness without changing settings, starting processes, opening sockets, sending JSON-RPC, approving plans, unlocking mutation, or mutating files.', 'context.runtimeReadinessStatus', ['runtime_status', 'agent_runtime_status', 'codex_runtime_status', 'startup_status', 'agent/getRuntimeReadinessStatus', 'runtime/readinessStatus', 'runtime/status'], schema({
+		includeGates: { type: 'boolean', default: true, description: 'Include ordered provider/backend/protocol startup gates.' },
+		includePromptBlock: { type: 'boolean', default: true, description: 'Include a compact redacted startup-readiness prompt block.' },
+	})),
 	def('client_state', 'Client state', 'context', 'Inspect redacted sidebar/client state, including mode, authorization summary, pending counts, tool catalog, delivery/final-review state, parallel state, and optional bounded protocol diagnostics.', 'context.clientState', ['get_client_state', 'agent/getClientState'], schema({
 		includeProtocol: { type: 'boolean', default: false, description: 'Include bounded redacted protocol diagnostics.' },
 	})),

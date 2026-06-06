@@ -104,6 +104,7 @@ export const vibeCodexAgentHandshakeCapabilities = {
 	extensionInstallStatusRequests: ['agent/getExtensionInstallStatus', 'agent/extensionInstallStatus', 'extension/installStatus', 'vsix/status', 'package/status'],
 	backendLaunchStatusRequests: ['agent/getBackendLaunchStatus', 'agent/backendLaunchStatus', 'backend/launchStatus', 'bridge/launchStatus'],
 	protocolStatusRequests: ['agent/getProtocolStatus', 'agent/protocolStatus', 'protocol/status', 'bridge/status'],
+	runtimeReadinessStatusRequests: ['agent/getRuntimeReadinessStatus', 'agent/runtimeReadinessStatus', 'runtime/readinessStatus', 'runtime/status'],
 	protocolDiagnostics: true,
 	clientStateRequests: true,
 	capabilityMatrixRequests: ['agent/getCapabilityMatrix', 'agent/getParityMatrix', 'capability/status', 'parity/status'],
@@ -199,8 +200,8 @@ export const vibeCodexHandshakeCapabilityGroups: readonly VibeCodexHandshakeCapa
 		id: 'providersAndSchemas',
 		title: 'Providers, Tool Schemas, and Protocol Diagnostics',
 		critical: true,
-		capabilities: ['providerSelection', 'providerCatalogRequests', 'providerStatusRequests', 'providerModeRouteStatus', 'extensionInstallStatusRequests', 'backendLaunchStatusRequests', 'protocolStatusRequests', 'protocolDiagnostics', 'clientStateRequests', 'capabilityMatrixRequests', 'toolSchemaRequests', 'toolCallStatusRequests'],
-		methods: ['agent/getProviderStatus', 'agent/getExtensionInstallStatus', 'agent/getBackendLaunchStatus', 'agent/getProtocolStatus', 'agent/getClientState', 'agent/getToolSchemas', 'agent/validateToolCall'],
+		capabilities: ['providerSelection', 'providerCatalogRequests', 'providerStatusRequests', 'providerModeRouteStatus', 'extensionInstallStatusRequests', 'backendLaunchStatusRequests', 'protocolStatusRequests', 'runtimeReadinessStatusRequests', 'protocolDiagnostics', 'clientStateRequests', 'capabilityMatrixRequests', 'toolSchemaRequests', 'toolCallStatusRequests'],
+		methods: ['agent/getProviderStatus', 'agent/getExtensionInstallStatus', 'agent/getBackendLaunchStatus', 'agent/getProtocolStatus', 'agent/getRuntimeReadinessStatus', 'agent/getClientState', 'agent/getToolSchemas', 'agent/validateToolCall'],
 	},
 	{
 		id: 'clineSurfaces',

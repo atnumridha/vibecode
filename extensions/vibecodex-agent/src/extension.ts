@@ -93,6 +93,7 @@ import { createProviderStatusResponse, normalizeProviderStatusRequest, providerS
 import { VibeCodexProtocolDirection, VibeCodexProtocolEvent, appendProtocolEvent, createProtocolEvent } from './protocolDiagnostics';
 import { createProtocolStatusResponse, normalizeProtocolStatusRequest, protocolStatusSummary, type VibeCodexProtocolStatusRequest, type VibeCodexProtocolStatusResponse, type VibeCodexProtocolTransportConfig } from './protocolStatusProtocol';
 import { createRedactionStatusResponse, normalizeRedactionStatusRequest, redactionStatusSummary, type VibeCodexRedactionStatusResponse } from './redactionStatusProtocol';
+import { createRuntimeReadinessStatusResponse, normalizeRuntimeReadinessStatusRequest, runtimeReadinessSummary, type VibeCodexRuntimeReadinessStatusRequest, type VibeCodexRuntimeReadinessStatusResponse } from './runtimeReadinessStatusProtocol';
 import { VibeCodexRuleProposal, createRuleProposal, ruleProposalPromptBlock, ruleProposalSummary } from './ruleProposal';
 import { createRollbackRestoreStatusResponse, normalizeRollbackRestoreStatusRequest, rollbackRestoreStatusSummary, type VibeCodexRollbackRestoreStatusRequest, type VibeCodexRollbackRestoreStatusResponse } from './rollbackRestoreStatusProtocol';
 import { VibeCodexSessionSnapshot, createSessionSnapshot, exportSessionSnapshot, loadSessionHistory, saveSessionSnapshot, updateSessionSnapshot } from './sessionHistory';
@@ -4600,6 +4601,18 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			return;
 		}
 
+		const runtimeReadinessStatus = normalizeRuntimeReadinessStatusRequest(message);
+		if (runtimeReadinessStatus) {
+			const response = await this.currentRuntimeReadinessStatus(runtimeReadinessStatus);
+			const summary = runtimeReadinessSummary(response);
+			this.recordProtocol('out', 'runtime readiness status response', { id: runtimeReadinessStatus.id, result: response });
+			await this.bridge?.respond(runtimeReadinessStatus.id, response);
+			this.postRuntimeReadinessStatus(response);
+			this.recordTranscript('system', response.ready ? 'Returned runtime readiness' : 'Runtime readiness needs attention', summary, response.ready ? 'completed' : response.route.startsWith('inspect_') || response.route === 'connect_backend' ? 'pending' : 'blocked');
+			this.updateStatus(summary);
+			return;
+		}
+
 		const clientState = normalizeClientStateRequest(message);
 		if (clientState) {
 			const response = this.createClientStateResponse(clientState);
@@ -7545,6 +7558,52 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			type: 'protocolStatus',
 			summary: protocolStatusSummary(status),
 			status,
+		});
+	}
+
+	private postRuntimeReadinessStatus(response: VibeCodexRuntimeReadinessStatusResponse): void {
+		this.postMessage({
+			type: 'runtimeReadinessStatus',
+			summary: runtimeReadinessSummary(response),
+			status: response,
+		});
+	}
+
+	private async currentRuntimeReadinessStatus(request?: VibeCodexRuntimeReadinessStatusRequest): Promise<VibeCodexRuntimeReadinessStatusResponse> {
+		const provider = this.lastProvider ?? await providerRuntimeConfig(this.extensionContext.secrets, this.lastMode);
+		const providerStatus = this.currentProviderStatus({
+			id: 'runtime-provider-status',
+			method: 'runtime/providerStatus',
+			mode: this.lastMode,
+			includeCodexConfig: true,
+			includeModeRoutes: false,
+			includePromptBlock: false,
+			requestedAt: Date.now(),
+		}, provider);
+		const backendLaunchStatus = this.currentBackendLaunchStatus({
+			id: 'runtime-backend-launch-status',
+			method: 'runtime/backendLaunchStatus',
+			includeRoutes: false,
+			includePromptBlock: false,
+			requestedAt: Date.now(),
+		});
+		const protocolStatus = this.currentProtocolStatus({
+			id: 'runtime-protocol-status',
+			method: 'runtime/protocolStatus',
+			includeEvents: false,
+			maxEvents: 0,
+			requestedAt: Date.now(),
+		});
+		return createRuntimeReadinessStatusResponse(request ?? {
+			id: 'sidebar-runtime-readiness-status',
+			method: 'sidebar/runtimeReadinessStatus',
+			includeGates: true,
+			includePromptBlock: false,
+			requestedAt: Date.now(),
+		}, {
+			providerStatus,
+			backendLaunchStatus,
+			protocolStatus,
 		});
 	}
 

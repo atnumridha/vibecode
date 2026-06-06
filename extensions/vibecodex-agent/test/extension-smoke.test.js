@@ -52,6 +52,7 @@ const { createProtocolStatusResponse, normalizeProtocolStatusRequest } = require
 const { createProviderCatalogResponse, normalizeProviderCatalogRequest } = require('../out/providerCatalogProtocol');
 const { createProviderStatusResponse, normalizeProviderStatusRequest } = require('../out/providerStatusProtocol');
 const { createRollbackRestoreStatusResponse, normalizeRollbackRestoreStatusRequest } = require('../out/rollbackRestoreStatusProtocol');
+const { createRuntimeReadinessStatusResponse, normalizeRuntimeReadinessStatusRequest } = require('../out/runtimeReadinessStatusProtocol');
 const { createSafetyStatusResponse, normalizeSafetyStatusRequest } = require('../out/safetyStatusProtocol');
 const { createSmokeBenchmarkState } = require('../out/smokeBenchmark');
 const { createSmokeBenchmarkStatusResponse, normalizeSmokeBenchmarkStatusRequest } = require('../out/smokeBenchmarkStatusProtocol');
@@ -661,6 +662,27 @@ assert.equal(protocolStatus.counts.error, 0);
 assert.equal(protocolStatus.promptBlock.includes('Protocol status is observability-only'), true);
 assert.equal(JSON.stringify(protocolStatus).includes('sk-live-secret-value'), false);
 
+const runtimeReadinessStatus = createRuntimeReadinessStatusResponse(normalizeRuntimeReadinessStatusRequest({
+	jsonrpc: '2.0',
+	id: 'runtime-readiness-1',
+	method: 'agent/getRuntimeReadinessStatus',
+	params: { includeGates: true, includePromptBlock: true },
+}), {
+	providerStatus,
+	backendLaunchStatus,
+	protocolStatus,
+});
+assert.equal(runtimeReadinessStatus.ready, true);
+assert.equal(runtimeReadinessStatus.route, 'ready_for_plan');
+assert.equal(runtimeReadinessStatus.mutationLocked, true);
+assert.equal(runtimeReadinessStatus.counts.gates, 6);
+assert.equal(runtimeReadinessStatus.counts.passed, 6);
+assert.equal(runtimeReadinessStatus.provider.provider, 'ollama');
+assert.equal(runtimeReadinessStatus.backend.connected, true);
+assert.equal(runtimeReadinessStatus.protocol.handshakeReady, true);
+assert.equal(runtimeReadinessStatus.promptBlock.includes('runtime_readiness_status'), true);
+assert.equal(JSON.stringify(runtimeReadinessStatus).includes('sk-live-secret-value'), false);
+
 const unsupportedHandshakeProtocolStatus = createProtocolStatusResponse(normalizeProtocolStatusRequest({
 	jsonrpc: '2.0',
 	id: 'protocol-unsupported-handshake-1',
@@ -681,6 +703,23 @@ assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.backendHan
 assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.ready, false);
 assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.missingRequired.length, 0);
 assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.coverage.complete, true);
+
+const unsupportedHandshakeRuntimeStatus = createRuntimeReadinessStatusResponse(normalizeRuntimeReadinessStatusRequest({
+	jsonrpc: '2.0',
+	id: 'runtime-readiness-unsupported-handshake-1',
+	method: 'item/tool/call',
+	params: { tool: 'runtime_readiness_status', arguments: { includeGates: true, includePromptBlock: true } },
+}), {
+	providerStatus,
+	backendLaunchStatus,
+	protocolStatus: unsupportedHandshakeProtocolStatus,
+});
+assert.equal(unsupportedHandshakeRuntimeStatus.ready, false);
+assert.equal(unsupportedHandshakeRuntimeStatus.route, 'repair_handshake');
+assert.equal(unsupportedHandshakeRuntimeStatus.mutationLocked, true);
+assert.equal(unsupportedHandshakeRuntimeStatus.counts.failed, 1);
+assert.equal(unsupportedHandshakeRuntimeStatus.gates.find(gate => gate.id === 'protocol-handshake').status, 'failed');
+assert.equal(unsupportedHandshakeRuntimeStatus.promptBlock.includes('Runtime readiness is startup/plan-readiness only'), true);
 
 const initialPlan = createFallbackPlan('Add agent workflow proof for sk-live-secret-value-1234567890', 'agent');
 const plan = applyPlanStepEdit(initialPlan, {
