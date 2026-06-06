@@ -950,10 +950,23 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 		this.postMemoryBank(this.lastMemoryBank);
 		this.postPreviewPlan(this.lastPreviewPlan);
 		this.postMcpCatalog(this.lastMcpCatalog);
+		const runtimeBeforeBackend = await this.currentRuntimeReadinessStatus({
+			id: 'task-start-runtime-readiness-before-backend',
+			method: 'task/startRuntimeReadiness',
+			includeGates: true,
+			includePromptBlock: false,
+			requestedAt: Date.now(),
+		});
+		this.postRuntimeReadinessStatus(runtimeBeforeBackend);
+		const runtimeBeforeSummary = runtimeReadinessSummary(runtimeBeforeBackend);
 		const fallbackPlan = createFallbackPlan(this.lastPrompt, this.lastMode);
 		this.lastVerificationPlan = await collectVerificationPlan(fallbackPlan.acceptanceCriteria);
 		this.lastVerificationCriteriaKey = verificationCriteriaKey(this.lastVerificationPlan.acceptanceCriteria);
 		this.postVerificationPlan(this.lastVerificationPlan);
+		const sessionStartDetail = [
+			'Local visual plan and verification gate generated before backend refinement.',
+			`Runtime startup gate: ${runtimeBeforeSummary}`,
+		].join('\n');
 		await this.startSession({
 			mode: this.lastMode,
 			prompt: this.lastPrompt,
@@ -975,20 +988,53 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			mcpCatalog: this.lastMcpCatalog,
 			toolCatalog,
 			inlinePromptSession: inlineSession,
-			transcript: createInitialTranscript(this.lastMode, this.lastPrompt, 'Local visual plan and verification gate generated before backend refinement.', this.lastContext, this.lastProvider, this.lastModePolicy, this.lastCommandPermissionPolicy, this.lastParallelPlan, this.lastVerificationPlan, this.lastCustomModeCatalog, this.lastSessionRecall, this.lastDocsContext, this.lastWorkspaceGuidance, this.lastRuleProposal, this.lastMemoryBank, this.lastPreviewPlan, this.lastMcpCatalog, toolCatalog, this.lastSlashCommand),
+			transcript: createInitialTranscript(this.lastMode, this.lastPrompt, sessionStartDetail, this.lastContext, this.lastProvider, this.lastModePolicy, this.lastCommandPermissionPolicy, this.lastParallelPlan, this.lastVerificationPlan, this.lastCustomModeCatalog, this.lastSessionRecall, this.lastDocsContext, this.lastWorkspaceGuidance, this.lastRuleProposal, this.lastMemoryBank, this.lastPreviewPlan, this.lastMcpCatalog, toolCatalog, this.lastSlashCommand),
 			status: 'planning',
-			evidence: ['Local visual plan and verification gate generated before backend refinement.', ...(this.lastSlashCommand ? [slashCommandSummary(this.lastSlashCommand)] : [])],
+			evidence: ['Local visual plan and verification gate generated before backend refinement.', `Runtime startup gate: ${runtimeBeforeSummary}`, ...(this.lastSlashCommand ? [slashCommandSummary(this.lastSlashCommand)] : [])],
 		});
 		this.setActivePlan(fallbackPlan, 'Local visual plan and workspace context ready. Connecting to Codex app-server for backend plan refinement.', 'submitted');
 
 		const connected = await this.connectExternalBackend();
+		const runtimeAfterConnect = await this.currentRuntimeReadinessStatus({
+			id: 'task-start-runtime-readiness-after-connect',
+			method: 'task/startRuntimeReadinessAfterConnect',
+			includeGates: true,
+			includePromptBlock: true,
+			requestedAt: Date.now(),
+		});
+		this.postRuntimeReadinessStatus(runtimeAfterConnect);
+		const runtimeAfterSummary = runtimeReadinessSummary(runtimeAfterConnect);
 		if (!connected || !this.bridge) {
+			this.recordTranscript('system', 'Runtime startup gate kept backend refinement offline', runtimeAfterSummary, 'pending');
+			await this.patchActiveSession({
+				status: 'planning',
+				evidence: this.activeEvidence(`Backend runtime readiness: ${runtimeAfterSummary}`),
+			});
 			this.updateStatus('Review the local visual plan, then approve to run the Codex CLI terminal fallback.');
+			return;
+		}
+		if (!runtimeAfterConnect.ready) {
+			const detail = [
+				runtimeAfterSummary,
+				`Next: ${runtimeAfterConnect.nextAction}`,
+				runtimeAfterConnect.blockers.length ? `Blockers:\n${runtimeAfterConnect.blockers.join('\n')}` : undefined,
+			].filter(Boolean).join('\n');
+			this.recordTranscript('system', 'Blocked backend plan refinement by runtime readiness gate', detail, runtimeAfterConnect.route === 'connect_backend' ? 'pending' : 'blocked');
+			await this.patchActiveSession({
+				status: 'planning',
+				evidence: this.activeEvidence(`Backend runtime readiness blocked: ${runtimeAfterSummary}`),
+			});
+			this.updateStatus(`Backend plan refinement blocked: ${runtimeAfterConnect.nextAction}`);
 			return;
 		}
 
 		try {
-			const context = this.createBackendTaskContext(this.lastMode, this.lastPrompt, this.lastContext, this.lastProvider, this.lastModePolicy, this.lastCommandPermissionPolicy, this.lastParallelPlan, this.lastVerificationPlan, this.lastCustomModeCatalog, this.lastSessionRecall, this.lastDocsContext, this.lastWorkspaceGuidance, this.lastRuleProposal, this.lastMemoryBank, this.lastPreviewPlan, this.lastMcpCatalog);
+			const context = {
+				...this.createBackendTaskContext(this.lastMode, this.lastPrompt, this.lastContext, this.lastProvider, this.lastModePolicy, this.lastCommandPermissionPolicy, this.lastParallelPlan, this.lastVerificationPlan, this.lastCustomModeCatalog, this.lastSessionRecall, this.lastDocsContext, this.lastWorkspaceGuidance, this.lastRuleProposal, this.lastMemoryBank, this.lastPreviewPlan, this.lastMcpCatalog),
+				runtimeReadiness: runtimeAfterConnect,
+				runtimeReadinessSummary: runtimeAfterSummary,
+				...(runtimeAfterConnect.promptBlock ? { runtimeReadinessPrompt: runtimeAfterConnect.promptBlock } : {}),
+			};
 			this.recordProtocol('out', 'thread/start', { jsonrpc: '2.0', method: 'thread/start', params: context });
 			const thread = await this.bridge.request('thread/start', context);
 			const threadId = extractThreadId(thread);

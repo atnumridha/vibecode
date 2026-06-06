@@ -692,6 +692,10 @@ assert.equal(extensionRuntimeSource.includes("type === 'runtimeReadinessStatus'"
 assert.equal(extensionRuntimeSource.includes('data-runtime-readiness-status'), true);
 assert.equal(extensionRuntimeSource.includes('renderRuntimeReadinessStatus'), true);
 assert.equal(extensionRuntimeSource.includes('refreshRuntimeReadinessStatus'), true);
+assert.equal(extensionRuntimeSource.includes('task-start-runtime-readiness-before-backend'), true);
+assert.equal(extensionRuntimeSource.includes('task-start-runtime-readiness-after-connect'), true);
+assert.equal(extensionRuntimeSource.includes('runtimeReadinessPrompt'), true);
+assert.equal(extensionRuntimeSource.includes('Blocked backend plan refinement by runtime readiness gate'), true);
 
 const unsupportedHandshakeProtocolStatus = createProtocolStatusResponse(normalizeProtocolStatusRequest({
 	jsonrpc: '2.0',
