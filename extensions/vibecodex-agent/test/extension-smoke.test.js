@@ -660,6 +660,27 @@ assert.equal(protocolStatus.counts.error, 0);
 assert.equal(protocolStatus.promptBlock.includes('Protocol status is observability-only'), true);
 assert.equal(JSON.stringify(protocolStatus).includes('sk-live-secret-value'), false);
 
+const unsupportedHandshakeProtocolStatus = createProtocolStatusResponse(normalizeProtocolStatusRequest({
+	jsonrpc: '2.0',
+	id: 'protocol-unsupported-handshake-1',
+	method: 'agent/getProtocolStatus',
+	params: { includeEvents: false },
+}), {
+	bridgeStatus: {
+		...bridgeStatus,
+		handshake: 'unsupported',
+		detail: 'agent/initialize returned -32601 unknown method',
+	},
+	protocolEvents,
+	transportConfig: bridgeTransportConfig,
+});
+assert.equal(unsupportedHandshakeProtocolStatus.bridgeAvailable, true);
+assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.backendAccepted, false);
+assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.backendHandshake, 'unsupported');
+assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.ready, false);
+assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.missingRequired.length, 0);
+assert.equal(unsupportedHandshakeProtocolStatus.handshakeCapabilities.coverage.complete, true);
+
 const initialPlan = createFallbackPlan('Add agent workflow proof for sk-live-secret-value-1234567890', 'agent');
 const plan = applyPlanStepEdit(initialPlan, {
 	stepId: 'review',
@@ -1738,6 +1759,14 @@ const deliveryBarReadOnlyMode = createDeliveryBarState({
 });
 assert.equal(deliveryBarReadOnlyMode.blocked, true);
 assert.equal(deliveryBarReadOnlyMode.checks.find(check => check.id === 'mode-readiness').status, 'failed');
+
+const deliveryBarUnsupportedHandshake = createDeliveryBarState({
+	...deliveryBarInput,
+	protocolStatus: unsupportedHandshakeProtocolStatus,
+});
+assert.equal(deliveryBarUnsupportedHandshake.blocked, true);
+assert.equal(deliveryBarUnsupportedHandshake.checks.find(check => check.id === 'bridge').status, 'failed');
+assert.match(deliveryBarUnsupportedHandshake.checks.find(check => check.id === 'bridge').detail, /Backend handshake is unsupported/);
 
 const checkpointStatus = createCheckpointStatusResponse(normalizeCheckpointStatusRequest({
 	jsonrpc: '2.0',

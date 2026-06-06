@@ -282,12 +282,13 @@ function createHandshakeCapabilities(backendHandshake: VibeCodexProtocolHandshak
 		.filter(group => group.critical && !group.available)
 		.map(group => group.id);
 	const coverage = createHandshakeContractCoverage(contract);
+	const backendAccepted = backendHandshake === 'ok';
 	return {
 		client: contract.client,
 		version: contract.version,
 		backendHandshake,
-		backendAccepted: backendHandshake === 'ok',
-		ready: missingRequired.length === 0,
+		backendAccepted,
+		ready: backendAccepted && missingRequired.length === 0 && coverage.complete,
 		supportedTransports: contract.transports,
 		advertisedCapabilities: Object.keys(contract.capabilities).length,
 		requiredCapabilities: groups.filter(group => group.critical).map(group => group.id),

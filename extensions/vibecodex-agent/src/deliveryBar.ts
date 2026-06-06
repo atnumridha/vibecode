@@ -371,13 +371,13 @@ function bridgeCheck(backendLaunchStatus: VibeCodexBackendLaunchStatusResponse |
 	const launchReady = backendLaunchStatus?.ready ?? true;
 	const connected = backendLaunchStatus?.connected ?? protocolStatus?.bridgeAvailable ?? false;
 	const transportReady = protocolStatus?.transportReadiness?.ready ?? true;
-	const handshakeReady = protocolStatus?.handshakeCapabilities.ready ?? true;
+	const localHandshakeContractReady = !protocolStatus || (protocolStatus.handshakeCapabilities.missingRequired.length === 0 && protocolStatus.handshakeCapabilities.coverage.complete);
 	const handshakeAccepted = !protocolStatus || protocolStatus.health.handshake === 'ok' || protocolStatus.handshakeCapabilities.backendAccepted;
 	const protocolHealthy = !protocolStatus || (!protocolStatus.health.stale && protocolStatus.counts.error === 0 && protocolStatus.health.state !== 'unknown');
 	const blockers = [
 		launchReady ? undefined : backendLaunchStatus?.blockers[0] ?? 'Backend launch route is blocked.',
 		transportReady ? undefined : protocolStatus?.transportReadiness?.blockers[0] ?? 'Selected protocol transport route is blocked.',
-		handshakeReady ? undefined : 'Local handshake capability contract is incomplete.',
+		localHandshakeContractReady ? undefined : 'Local handshake capability contract is incomplete.',
 		handshakeAccepted ? undefined : `Backend handshake is ${protocolStatus?.health.handshake ?? 'unknown'}.`,
 		protocolHealthy ? undefined : 'Protocol health is stale, unknown, or has recorded errors.',
 		connected ? undefined : 'Codex app-server bridge is not connected yet.',
@@ -387,7 +387,7 @@ function bridgeCheck(backendLaunchStatus: VibeCodexBackendLaunchStatusResponse |
 		id: 'bridge',
 		title: 'Codex app-server bridge',
 		required: true,
-		status: ready ? 'passed' : connected && launchReady && transportReady ? 'pending' : 'failed',
+		status: ready ? 'passed' : connected && launchReady && transportReady && localHandshakeContractReady && handshakeAccepted ? 'pending' : 'failed',
 		detail: ready
 			? `JSON-RPC bridge connected over ${protocolStatus?.health.transport ?? backendLaunchStatus?.selectedTransport ?? 'configured transport'}/${protocolStatus?.health.framing ?? backendLaunchStatus?.framing ?? 'configured framing'} with accepted handshake.`
 			: blockers.slice(0, 3).join('; '),
