@@ -28,6 +28,9 @@ concurrency:
   group: vibecodex-agent-release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-release:
     name: Build VSIX and publish release

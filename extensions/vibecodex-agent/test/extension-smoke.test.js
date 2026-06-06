@@ -5,6 +5,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 
 const { createBackendLaunchStatusResponse, normalizeBackendLaunchStatusRequest } = require('../out/backendLaunchStatusProtocol');
 const { normalizeBrowserActionRequest } = require('../out/browserActionProtocol');
@@ -80,6 +81,14 @@ const { createSessionExportResponse, normalizeSessionExportRequest } = require('
 const { createSessionHistoryStatusResponse, normalizeSessionHistoryStatusRequest } = require('../out/sessionHistoryStatusProtocol');
 const { validateExtensionManifest } = require('../scripts/validate-extension-manifest.cjs');
 const packageManifest = require('../package.json');
+
+const extensionRoot = path.resolve(__dirname, '..');
+const extensionTsconfig = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'tsconfig.json'), 'utf8'));
+assert.equal(fs.existsSync(path.join(extensionRoot, '..', 'tsconfig.base.json')), true);
+assert.equal(fs.existsSync(path.join(extensionRoot, 'src', 'vscode.d.ts')), true);
+assert.equal(extensionTsconfig.extends, '../tsconfig.base.json');
+assert.deepEqual(extensionTsconfig.include, ['src/**/*']);
+assert.equal(extensionTsconfig.include.includes('../../src/vscode-dts/vscode.d.ts'), false);
 
 const now = Date.now();
 const contextPack = {
