@@ -1,0 +1,525 @@
+{
+  "name": "agent",
+  "displayName": "Vibe Codex Agent",
+  "description": "Vibe Codex agent surface built into VibeCode and installable as a VS Code VSIX.",
+  "version": "0.1.0",
+  "publisher": "vibecodex",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./out/extension",
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "codex",
+    "agent",
+    "cursor",
+    "cline",
+    "ai"
+  ],
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "activationEvents": [
+    "onView:vibecodex.agent.extensionView",
+    "onCommand:vibecodex.extension.openAgent",
+    "onCommand:vibecodex.extension.login",
+    "onCommand:vibecodex.extension.configureProvider",
+    "onCommand:vibecodex.extension.selectProvider",
+    "onCommand:vibecodex.extension.selectModel",
+    "onCommand:vibecodex.extension.selectModeModel",
+    "onCommand:vibecodex.extension.clearProviderCredentials",
+    "onCommand:vibecodex.extension.inlinePrompt",
+    "onCommand:vibecodex.extension.planMode",
+    "onCommand:vibecodex.extension.askMode",
+    "onCommand:vibecodex.extension.manualMode",
+    "onCommand:vibecodex.extension.actMode",
+    "onCommand:vibecodex.extension.agentMode",
+    "onCommand:vibecodex.extension.debugMode",
+    "onCommand:vibecodex.extension.reviewMode",
+    "onCommand:vibecodex.extension.customMode",
+    "onCommand:vibecodex.extension.runInTerminal",
+    "onCommand:vibecodex.extension.connectBackend",
+    "onCommand:vibecodex.extension.disconnectBackend",
+    "onCommand:vibecodex.extension.restartBackend",
+    "onCommand:vibecodex.openAgent",
+    "onCommand:vibecodex.login",
+    "onCommand:vibecodex.configureProvider",
+    "onCommand:vibecodex.selectProvider",
+    "onCommand:vibecodex.selectModel",
+    "onCommand:vibecodex.selectModeModel",
+    "onCommand:vibecodex.clearProviderCredentials",
+    "onCommand:vibecodex.inlinePrompt",
+    "onCommand:vibecodex.planMode",
+    "onCommand:vibecodex.askMode",
+    "onCommand:vibecodex.manualMode",
+    "onCommand:vibecodex.actMode",
+    "onCommand:vibecodex.agentMode",
+    "onCommand:vibecodex.debugMode",
+    "onCommand:vibecodex.reviewMode",
+    "onCommand:vibecodex.customMode",
+    "onUri"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": true,
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Read-only planning, context inspection, and UI rendering are available in untrusted workspaces. Mutating actions, terminal execution, and worktree preparation remain approval/trust gated."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "vibecodex.extension.openAgent",
+        "title": "Open Agent",
+        "category": "Vibe Codex",
+        "icon": "$(sparkle-filled)"
+      },
+      {
+        "command": "vibecodex.extension.login",
+        "title": "Login",
+        "category": "Vibe Codex",
+        "icon": "$(account)"
+      },
+      {
+        "command": "vibecodex.extension.configureProvider",
+        "title": "Configure Provider",
+        "category": "Vibe Codex",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "vibecodex.extension.selectProvider",
+        "title": "Select Provider",
+        "category": "Vibe Codex"
+      },
+      {
+        "command": "vibecodex.extension.selectModel",
+        "title": "Select Model",
+        "category": "Vibe Codex"
+      },
+      {
+        "command": "vibecodex.extension.selectModeModel",
+        "title": "Select Mode Model",
+        "category": "Vibe Codex"
+      },
+      {
+        "command": "vibecodex.extension.clearProviderCredentials",
+        "title": "Clear Provider Credentials",
+        "category": "Vibe Codex",
+        "icon": "$(key)"
+      },
+      {
+        "command": "vibecodex.extension.inlinePrompt",
+        "title": "Inline Prompt",
+        "category": "Vibe Codex",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "vibecodex.extension.planMode",
+        "title": "Switch to Plan Mode",
+        "category": "Vibe Codex",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "vibecodex.extension.askMode",
+        "title": "Switch to Ask Mode",
+        "category": "Vibe Codex",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "vibecodex.extension.manualMode",
+        "title": "Switch to Manual Mode",
+        "category": "Vibe Codex",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "vibecodex.extension.actMode",
+        "title": "Switch to Act Mode",
+        "category": "Vibe Codex",
+        "icon": "$(play)"
+      },
+      {
+        "command": "vibecodex.extension.agentMode",
+        "title": "Switch to Agent Mode",
+        "category": "Vibe Codex",
+        "icon": "$(hubot)"
+      },
+      {
+        "command": "vibecodex.extension.debugMode",
+        "title": "Switch to Debug Mode",
+        "category": "Vibe Codex",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "vibecodex.extension.reviewMode",
+        "title": "Switch to Review Mode",
+        "category": "Vibe Codex",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "vibecodex.extension.customMode",
+        "title": "Switch to Custom Mode",
+        "category": "Vibe Codex",
+        "icon": "$(settings)"
+      },
+      {
+        "command": "vibecodex.extension.runInTerminal",
+        "title": "Run Task in Terminal",
+        "category": "Vibe Codex",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "vibecodex.extension.connectBackend",
+        "title": "Connect App Server",
+        "category": "Vibe Codex",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "vibecodex.extension.disconnectBackend",
+        "title": "Disconnect App Server",
+        "category": "Vibe Codex",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "vibecodex.extension.restartBackend",
+        "title": "Restart App Server",
+        "category": "Vibe Codex",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vibecodex.agent.extensionContainer",
+          "title": "Vibe Codex",
+          "icon": "media/vibecodex.svg"
+        }
+      ]
+    },
+    "views": {
+      "vibecodex.agent.extensionContainer": [
+        {
+          "id": "vibecodex.agent.extensionView",
+          "name": "Agent",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Vibe Codex",
+      "properties": {
+        "vibeCodex.extension.preferNativeHost": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Use the native VibeCode workbench agent when it is available, and use the extension fallback surface otherwise."
+        },
+        "vibeCodex.extension.codexCommand": {
+          "type": "string",
+          "default": "codex",
+          "markdownDescription": "Codex CLI command used by external VS Code installs. VibeCode builds use the native managed app-server bridge."
+        },
+        "vibeCodex.extension.codexArgs": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Additional Codex CLI arguments used only by external VS Code installs before the task prompt is appended."
+        },
+        "vibeCodex.extension.appServerArgs": {
+          "type": "array",
+          "default": [
+            "app-server"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Arguments passed to the configured Codex CLI when the external extension starts the JSON-RPC app-server."
+        },
+        "vibeCodex.extension.transport": {
+          "type": "string",
+          "default": "stdio",
+          "enum": [
+            "stdio",
+            "pipe",
+            "websocket"
+          ],
+          "markdownDescription": "JSON-RPC transport used by external VS Code installs. `stdio` starts the configured Codex app-server process; `pipe` connects to an already-running Unix socket or Windows named pipe; `websocket` connects to an already-running WebSocket app-server."
+        },
+        "vibeCodex.extension.pipePath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Unix socket or Windows named pipe path used when `vibeCodex.extension.transport` is `pipe`."
+        },
+        "vibeCodex.extension.websocketUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "ws:// or wss:// URL used when `vibeCodex.extension.transport` is `websocket`."
+        },
+        "vibeCodex.extension.messageFraming": {
+          "type": "string",
+          "default": "ndjson",
+          "enum": [
+            "ndjson",
+            "content-length"
+          ],
+          "markdownDescription": "JSON-RPC message framing for external backend transports. `ndjson` sends newline-delimited JSON; `content-length` sends LSP-style `Content-Length` headers."
+        },
+        "vibeCodex.extension.provider": {
+          "type": "string",
+          "default": "codex",
+          "enum": [
+            "codex",
+            "openai",
+            "anthropic",
+            "gemini",
+            "ollama",
+            "lmstudio",
+            "bedrock",
+            "openrouter",
+            "vercel",
+            "azure",
+            "vertex",
+            "cerebras",
+            "groq",
+            "mistral",
+            "xai",
+            "custom"
+          ],
+          "markdownDescription": "Model provider used by the installable Vibe Codex extension. VS Code settings override sanitized Codex CLI config defaults; API key values stay in SecretStorage, Codex auth, or the user environment."
+        },
+        "vibeCodex.extension.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model name sent to the Vibecodex/Codex backend for external extension sessions. Leave blank to use the Codex CLI config/default provider model when available."
+        },
+        "vibeCodex.extension.modeModels": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "markdownDescription": "Optional per-mode model overrides keyed by `plan`, `ask`, `manual`, `act`, `agent`, `debug`, `review`, or `custom`. This lets Plan/Ask/Review use a reasoning model while Act/Agent/Debug use a faster local or OpenAI-compatible model without duplicating provider credentials."
+        },
+        "vibeCodex.extension.baseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Optional OpenAI-compatible base URL for local or third-party providers. Leave blank to use the matching base URL from `~/.codex/config.toml` or the provider default."
+        },
+        "vibeCodex.extension.parallelThreads": {
+          "type": "number",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 8,
+          "markdownDescription": "Number of isolated Vibe Codex agent lanes to request for app-server execution. Values above 1 request git-worktree isolation and judge-before-merge review."
+        },
+        "vibeCodex.extension.commandPermissions.defaultAllow": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Allow terminal commands by default after exact visual plan approval unless a deny rule or built-in dangerous-command rule matches. Set false to require an allow rule for every terminal command."
+        },
+        "vibeCodex.extension.commandPermissions.allow": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Command permission allow patterns for backend terminal execution. Patterns are case-insensitive, support `*`, and also match command prefixes such as `npm test`."
+        },
+        "vibeCodex.extension.commandPermissions.deny": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "markdownDescription": "Command permission deny patterns for backend terminal execution. Deny rules and built-in dangerous-command blocking always win over allow rules and auto-approval."
+        },
+        "vibeCodex.extension.autoApprove.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Enable opt-in auto-approval for selected Vibe Codex backend requests after an exact visual plan revision has been approved."
+        },
+        "vibeCodex.extension.autoApprove.terminal": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Auto-approve non-blocked terminal approval requests when auto-approval is enabled and a plan execution authorization exists."
+        },
+        "vibeCodex.extension.autoApprove.file": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Auto-approve non-blocked file change approval requests when auto-approval is enabled, max risk allows it, and a plan execution authorization exists."
+        },
+        "vibeCodex.extension.autoApprove.tool": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Auto-approve non-blocked generic tool approval requests when auto-approval is enabled and a plan execution authorization exists."
+        },
+        "vibeCodex.extension.autoApprove.generic": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Auto-approve non-blocked generic approval requests when auto-approval is enabled and a plan execution authorization exists."
+        },
+        "vibeCodex.extension.autoApprove.mcp": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Auto-approve non-blocked MCP tool/resource requests when auto-approval is enabled, max risk allows it, and a plan execution authorization exists."
+        },
+        "vibeCodex.extension.autoApprove.browser": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Auto-approve supported browser open/navigate requests when auto-approval is enabled and a plan execution authorization exists."
+        },
+        "vibeCodex.extension.autoApprove.maxRisk": {
+          "type": "string",
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "markdownDescription": "Highest request risk level eligible for Vibe Codex auto-approval. Blocked requests are never auto-approved."
+        },
+        "vibeCodex.extension.autoCommit.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Expose opt-in auto-commit readiness after Final Review passes. This setting never stages or commits by itself; a commit still requires explicit user action or an approved terminal request."
+        },
+        "vibeCodex.extension.notifications.approvals": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show VS Code notifications when Vibe Codex is waiting for plan, tool, MCP, browser, or diff approval."
+        },
+        "vibeCodex.extension.notifications.terminalCompletion": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Show VS Code notifications when captured Vibe Codex terminal runs complete."
+        },
+        "vibeCodex.extension.notifications.longRunningTerminalSeconds": {
+          "type": "number",
+          "default": 120,
+          "minimum": 0,
+          "maximum": 3600,
+          "markdownDescription": "Seconds before Vibe Codex notifies that a captured terminal command is still running. Set to 0 to disable long-running terminal notifications."
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "vibecodex.extension.openAgent"
+        },
+        {
+          "command": "vibecodex.extension.login"
+        },
+        {
+          "command": "vibecodex.extension.configureProvider"
+        },
+        {
+          "command": "vibecodex.extension.selectProvider"
+        },
+        {
+          "command": "vibecodex.extension.selectModel"
+        },
+        {
+          "command": "vibecodex.extension.inlinePrompt"
+        },
+        {
+          "command": "vibecodex.extension.planMode"
+        },
+        {
+          "command": "vibecodex.extension.askMode"
+        },
+        {
+          "command": "vibecodex.extension.manualMode"
+        },
+        {
+          "command": "vibecodex.extension.actMode"
+        },
+        {
+          "command": "vibecodex.extension.agentMode"
+        },
+        {
+          "command": "vibecodex.extension.debugMode"
+        },
+        {
+          "command": "vibecodex.extension.reviewMode"
+        },
+        {
+          "command": "vibecodex.extension.customMode"
+        },
+        {
+          "command": "vibecodex.extension.runInTerminal"
+        },
+        {
+          "command": "vibecodex.extension.connectBackend"
+        },
+        {
+          "command": "vibecodex.extension.disconnectBackend"
+        },
+        {
+          "command": "vibecodex.extension.restartBackend"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "vibecodex.extension.openAgent",
+          "when": "view == vibecodex.agent.extensionView",
+          "group": "navigation"
+        },
+        {
+          "command": "vibecodex.extension.configureProvider",
+          "when": "view == vibecodex.agent.extensionView",
+          "group": "navigation"
+        },
+        {
+          "command": "vibecodex.extension.connectBackend",
+          "when": "view == vibecodex.agent.extensionView",
+          "group": "navigation"
+        },
+        {
+          "command": "vibecodex.extension.restartBackend",
+          "when": "view == vibecodex.agent.extensionView",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "vibecodex.extension.inlinePrompt",
+          "when": "editorTextFocus",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "vibecodex.extension.inlinePrompt",
+        "key": "ctrl+k",
+        "mac": "cmd+k",
+        "when": "editorTextFocus && !editorReadonly"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsgo --project ./tsconfig.json",
+    "watch": "tsgo --project ./tsconfig.json --watch",
+    "vscode:prepublish": "npm run build-ext",
+    "build-ext": "tsgo --project ./tsconfig.json",
+    "typecheck": "tsgo --project ./tsconfig.json --noEmit",
+    "test:extension": "node ./test/extension-smoke.test.js",
+    "verify": "npm run typecheck && npm run build-ext && npm run test:extension && npm run package-vsix",
+    "package-vsix": "npm run build-ext && node ./scripts/package-vsix.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/atnumridha/vibecode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/atnumridha/vibecode/issues"
+  },
+  "homepage": "https://github.com/atnumridha/vibecode#readme"
+}
