@@ -22,5 +22,5 @@ Before tagging a release, run:
 
 ```sh
 npm --prefix extensions/vibecodex-agent run verify
-shasum -a 256 -c extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix.sha256
+shasum -a 256 -c extensions/vibecodex-agent/vibecodex.agent-*.vsix.sha256
 ```

@@ -277,6 +277,13 @@ function createFeatures(input: {
 	const hasAgentViewContainer = activitybar.some(item => isRecord(item) && stringValue(item.id) === 'vibecodex-agent-extension-container');
 	const hasAgentView = Array.isArray(views['vibecodex-agent-extension-container'])
 		&& views['vibecodex-agent-extension-container'].some(item => isRecord(item) && stringValue(item.id) === 'vibecodex-agent-extension-view');
+	const hasSchemaSafeViewContributionIds = activitybar.length > 0
+		&& activitybar.every(item => isRecord(item) && isValidVsCodeContributionId(stringValue(item.id)))
+		&& Object.entries(views).length > 0
+		&& Object.entries(views).every(([containerId, contributedViews]) => isValidVsCodeContributionId(containerId)
+			&& Array.isArray(contributedViews)
+			&& contributedViews.length > 0
+			&& contributedViews.every(view => isRecord(view) && isValidVsCodeContributionId(stringValue(view.id))));
 	const providerConfigKeys = [
 		'vibeCodex.extension.codexCommand',
 		'vibeCodex.extension.transport',
@@ -360,6 +367,7 @@ function createFeatures(input: {
 		feature('mode-entrypoints', 'Eight standard mode entrypoints', modeCommands.every(command => input.commands.includes(command)) && hasModeCommandPaletteEntries, 'Plan, Ask, Manual, Act, Agent, Debug, Review, and Custom modes are visible installable commands and command-palette entries.'),
 		feature('inline-shortcut', 'Ctrl/Cmd+K inline prompt shortcut', hasInlinePromptKeybinding, 'The installable extension binds Ctrl+K and Cmd+K to the Vibe Codex inline prompt only while an editable editor is focused.'),
 		feature('menu-entrypoints', 'Command palette, view, and editor menus', hasCommandPaletteEntries && hasViewTitleActions && hasEditorContextInlinePrompt, 'Agent, provider/backend, and inline-prompt commands are visible from command palette, Agent view title, and editor context menu.'),
+		feature('vs-code-contribution-ids', 'VS Code contribution id schema', hasSchemaSafeViewContributionIds, 'Activity bar view-container ids, contributed view keys, and view ids are non-empty and use only alphanumeric characters, underscores, and hyphens.'),
 		feature('sidebar-view', 'Activity bar and webview view', hasAgentViewContainer && hasAgentView, 'The installable extension contributes the Vibe Codex activity bar container and Agent webview view.'),
 		feature('provider-backend-config', 'Provider/backend configuration', providerConfigKeys.every(key => input.configurationKeys.includes(key)), 'Codex command, transport, framing, provider, model, mode routing, base URL, and parallel thread settings are configurable.'),
 		feature('workspace-support', 'Workspace support declaration', input.capabilities.virtualWorkspaces === true && input.untrustedWorkspaces.supported === 'limited', 'Virtual workspaces are supported and untrusted workspaces are explicitly limited and approval/trust gated.'),
@@ -375,6 +383,10 @@ function feature(id: string, title: string, ready: boolean, detail: string): Vib
 		ready,
 		detail,
 	};
+}
+
+function isValidVsCodeContributionId(value: string | undefined): boolean {
+	return !!value && /^[A-Za-z0-9_-]+$/.test(value);
 }
 
 function createBlockers(manifest: Record<string, unknown> | undefined, features: readonly VibeCodexExtensionInstallFeature[]): readonly string[] {

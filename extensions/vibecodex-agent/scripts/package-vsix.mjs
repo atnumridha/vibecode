@@ -11,21 +11,21 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 
-function loadVsce() {
+function loadVscePack() {
 	try {
-		return require('@vscode/vsce');
+		return require('@vscode/vsce/out/package').pack;
 	} catch {
-		return require('../../../build/node_modules/@vscode/vsce');
+		return require('../../../build/node_modules/@vscode/vsce/out/package').pack;
 	}
 }
 
-const vsce = loadVsce();
+const packVsix = loadVscePack();
 
 const extensionRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = require(resolve(extensionRoot, 'package.json'));
 const packagePath = resolve(extensionRoot, `${packageJson.publisher}.${packageJson.name}-${packageJson.version}.vsix`);
 
-await vsce.createVSIX({
+await packVsix({
 	cwd: extensionRoot,
 	packagePath,
 	dependencies: false,

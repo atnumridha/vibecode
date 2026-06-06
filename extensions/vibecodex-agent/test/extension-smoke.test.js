@@ -386,6 +386,16 @@ assert.ok(extensionInstallStatus.counts.menuItems >= 18);
 assert.equal(extensionInstallStatus.features.find(feature => feature.id === 'inline-shortcut').ready, true);
 assert.equal(extensionInstallStatus.features.find(feature => feature.id === 'menu-entrypoints').ready, true);
 assert.equal(extensionInstallStatus.features.find(feature => feature.id === 'mode-entrypoints').ready, true);
+assert.equal(extensionInstallStatus.features.find(feature => feature.id === 'vs-code-contribution-ids').ready, true);
+const contributionIdPattern = /^[A-Za-z0-9_-]+$/;
+const contributedContainerId = packageManifest.contributes.viewsContainers.activitybar[0].id;
+const contributedViewKey = Object.keys(packageManifest.contributes.views)[0];
+const contributedViewId = packageManifest.contributes.views[contributedViewKey][0].id;
+assert.match(contributedContainerId, contributionIdPattern);
+assert.match(contributedViewKey, contributionIdPattern);
+assert.match(contributedViewId, contributionIdPattern);
+assert.equal(contributedViewKey, contributedContainerId);
+assert.equal(packageManifest.activationEvents.includes(`onView:${contributedViewId}`), true);
 assert.equal(extensionInstallStatus.commands.includes('vibecodex.extension.inlinePrompt'), true);
 for (const command of [
 	'vibecodex.extension.planMode',
@@ -404,6 +414,33 @@ assert.equal(extensionInstallStatus.activationEvents.includes('onCommand:vibecod
 assert.equal(extensionInstallStatus.activationEvents.includes('onCommand:vibecodex.manualMode'), true);
 assert.equal(extensionInstallStatus.activationEvents.includes('onCommand:vibecodex.customMode'), true);
 assert.equal(extensionInstallStatus.promptBlock.includes('code --install-extension'), true);
+
+const invalidDottedViewManifest = JSON.parse(JSON.stringify(packageManifest));
+invalidDottedViewManifest.contributes.viewsContainers.activitybar[0].id = 'vibecodex.agent.extensionContainer';
+invalidDottedViewManifest.contributes.views = {
+	'vibecodex.agent.extensionContainer': [{
+		...packageManifest.contributes.views[contributedViewKey][0],
+		id: 'vibecodex.agent.extensionView',
+	}],
+};
+invalidDottedViewManifest.activationEvents = packageManifest.activationEvents.map(event => event === `onView:${contributedViewId}` ? 'onView:vibecodex.agent.extensionView' : event);
+const invalidDottedViewStatus = createExtensionInstallStatusResponse(normalizeExtensionInstallStatusRequest({
+	jsonrpc: '2.0',
+	id: 'extension-install-invalid-dotted-view',
+	method: 'agent/getExtensionInstallStatus',
+	params: { includeFeatures: true },
+}), {
+	manifest: invalidDottedViewManifest,
+	extensionId: 'vibecodex.agent',
+	extensionMode: 'test',
+	extensionUri: 'file:///workspace/vibecodex/extensions/vibecodex-agent',
+	runtimeModuleLoaded: true,
+	strictWebviewCsp: true,
+	localResourceRootsScoped: true,
+});
+assert.equal(invalidDottedViewStatus.ready, false);
+assert.equal(invalidDottedViewStatus.features.find(feature => feature.id === 'vs-code-contribution-ids').ready, false);
+assert.ok(invalidDottedViewStatus.blockers.some(blocker => blocker.includes('VS Code contribution id schema')));
 
 const codexConfig = {
 	found: true,
