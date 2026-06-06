@@ -26,6 +26,18 @@ export interface VibeCodexMermaidFlow {
 	readonly errors: readonly string[];
 }
 
+export interface VibeCodexMermaidChecklistBindingReport {
+	readonly valid: boolean;
+	readonly stepCount: number;
+	readonly linkedStepCount: number;
+	readonly nodeIds: readonly string[];
+	readonly stepFlowNodeIds: readonly string[];
+	readonly linkedStepIds: readonly string[];
+	readonly missingFlowNodeIds: readonly string[];
+	readonly duplicateFlowNodeIds: readonly string[];
+	readonly errors: readonly string[];
+}
+
 const mermaidStartPattern = /^\s*(graph|flowchart)\s+(TD|TB|BT|RL|LR)\b/i;
 const blockedMermaidPattern = /(?:\b(?:click|href|javascript:)|<script|%%\{(?:init:)?)/i;
 const nodePattern = /^\s*([a-zA-Z0-9_.:-]+)\s*(?:\[([^\]]*)\]|\{([^}]*)\}|\(([^)]*)\))?\s*$/;
@@ -131,6 +143,34 @@ export function parseMermaidFlowchart(value: string, steps: readonly VibeCodexPl
 	};
 }
 
+export function createMermaidChecklistBindingReport(flowchart: string, steps: readonly VibeCodexPlanStep[]): VibeCodexMermaidChecklistBindingReport {
+	const flow = parseMermaidFlowchart(flowchart);
+	const nodeIds = uniqueStrings(flow.nodes.map(node => node.id));
+	const graphNodeIds = new Set(nodeIds);
+	const stepFlowNodeIds = steps.map(step => step.flowNodeId).filter(Boolean);
+	const duplicateFlowNodeIds = duplicateStrings(stepFlowNodeIds);
+	const missingFlowNodeIds = uniqueStrings(stepFlowNodeIds.filter(id => !graphNodeIds.has(id)));
+	const missing = new Set(missingFlowNodeIds);
+	const linkedStepIds = steps
+		.filter(step => step.flowNodeId && graphNodeIds.has(step.flowNodeId))
+		.map(step => step.id);
+	const errors = [
+		...missingFlowNodeIds.map(id => `Checklist flowNodeId "${id}" is not present in the Mermaid flowchart.`),
+		...duplicateFlowNodeIds.map(id => `Checklist flowNodeId "${id}" is duplicated.`),
+	];
+	return {
+		valid: flow.valid && !missing.size && !duplicateFlowNodeIds.length,
+		stepCount: steps.length,
+		linkedStepCount: linkedStepIds.length,
+		nodeIds,
+		stepFlowNodeIds,
+		linkedStepIds,
+		missingFlowNodeIds,
+		duplicateFlowNodeIds,
+		errors,
+	};
+}
+
 export function createLinearMermaidFlowchart(steps: readonly VibeCodexPlanStep[]): string {
 	const lines = ['graph TD'];
 	for (const step of steps) {
@@ -168,6 +208,31 @@ function upsertNode(nodes: Map<string, VibeCodexMermaidNode>, id: string, label:
 function edgeLabel(operator: string): string | undefined {
 	const label = /^--\s*(.*?)\s*-->$/.exec(operator)?.[1]?.trim();
 	return label ? escapeDisplayLabel(label) : undefined;
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+	const seen = new Set<string>();
+	const result: string[] = [];
+	for (const value of values) {
+		const trimmed = value.trim();
+		if (trimmed && !seen.has(trimmed)) {
+			seen.add(trimmed);
+			result.push(trimmed);
+		}
+	}
+	return result;
+}
+
+function duplicateStrings(values: readonly string[]): readonly string[] {
+	const seen = new Set<string>();
+	const duplicate = new Set<string>();
+	for (const value of values) {
+		if (seen.has(value)) {
+			duplicate.add(value);
+		}
+		seen.add(value);
+	}
+	return [...duplicate];
 }
 
 function escapeMermaidLabel(value: string): string {

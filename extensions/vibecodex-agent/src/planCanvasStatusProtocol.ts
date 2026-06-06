@@ -5,7 +5,7 @@
 
 import { authorizationMatchesPlan, type VibeCodexExecutionAuthorization } from './executionAuthorization';
 import type { JsonRpcId, JsonRpcMessage } from './externalBridge';
-import { parseMermaidFlowchart, validateMermaidFlowchart } from './mermaidFlow';
+import { createMermaidChecklistBindingReport, parseMermaidFlowchart, validateMermaidFlowchart } from './mermaidFlow';
 import { VibeCodexPlan, renderedPlanIdentity, validatePlan } from './planProtocol';
 import { redactSensitiveText, redactSensitiveValue } from './secretFilters';
 
@@ -129,11 +129,10 @@ export function createPlanCanvasStatusResponse(request: VibeCodexPlanCanvasStatu
 	const validation = plan ? validatePlan(plan) : { valid: false, errors: ['No active visual plan is available.'] };
 	const mermaid = plan ? validateMermaidFlowchart(plan.flowchart) : { valid: false, errors: ['No active visual plan is available.'] };
 	const flow = plan ? parseMermaidFlowchart(plan.flowchart, plan.steps) : undefined;
-	const nodeIds = new Set((flow?.nodes ?? []).map(node => node.id));
-	const stepFlowNodeIds = plan?.steps.map(step => step.flowNodeId).filter(Boolean) ?? [];
-	const missingFlowNodeIds = stepFlowNodeIds.filter(id => !nodeIds.has(id));
-	const duplicateFlowNodeIds = duplicates(stepFlowNodeIds);
-	const linkedSteps = stepFlowNodeIds.length - missingFlowNodeIds.length;
+	const bindings = plan ? createMermaidChecklistBindingReport(plan.flowchart, plan.steps) : undefined;
+	const missingFlowNodeIds = bindings?.missingFlowNodeIds ?? [];
+	const duplicateFlowNodeIds = bindings?.duplicateFlowNodeIds ?? [];
+	const linkedSteps = bindings?.linkedStepCount ?? 0;
 	const approved = authorizationMatchesPlan(input.authorization, plan);
 	const mermaidValid = mermaid.valid && !!flow?.valid;
 	const lastValidGraph = cachedGraphForPlan(plan, input.lastValidGraph);
@@ -347,18 +346,6 @@ function cachedGraphForPlan(plan: VibeCodexPlan | undefined, graph: VibeCodexPla
 
 function finiteCount(value: number): number {
 	return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-}
-
-function duplicates(values: readonly string[]): readonly string[] {
-	const seen = new Set<string>();
-	const duplicate = new Set<string>();
-	for (const value of values) {
-		if (seen.has(value)) {
-			duplicate.add(value);
-		}
-		seen.add(value);
-	}
-	return [...duplicate];
 }
 
 function uniqueStrings(values: readonly string[]): readonly string[] {

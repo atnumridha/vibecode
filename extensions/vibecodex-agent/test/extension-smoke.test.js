@@ -32,6 +32,7 @@ const { createGuidanceSelectionResponse, normalizeGuidanceSelectionRequest } = r
 const { createGuidanceStatusResponse, normalizeGuidanceStatusRequest } = require('../out/guidanceStatusProtocol');
 const { createHappyPathStatusResponse, normalizeHappyPathStatusRequest } = require('../out/happyPathStatusProtocol');
 const { createInlinePromptStatusResponse, normalizeInlinePromptStatusRequest } = require('../out/inlinePromptStatusProtocol');
+const { createMermaidChecklistBindingReport } = require('../out/mermaidFlow');
 const { createMcpStatusResponse, normalizeMcpStatusRequest } = require('../out/mcpStatusProtocol');
 const { modePolicyFor } = require('../out/modePolicy');
 const { createModeStatusResponse, normalizeModeStatusRequest } = require('../out/modeStatusProtocol');
@@ -902,6 +903,51 @@ assert.equal(planCanvasStatus.counts.linkedSteps, plan.steps.length);
 assert.equal(planCanvasStatus.features.find(feature => feature.id === 'offline-local-svg-renderer').ready, true);
 assert.equal(planCanvasStatus.features.find(feature => feature.id === 'strict-webview-csp').ready, true);
 assert.equal(planCanvasStatus.promptBlock.includes('plan_canvas_status'), true);
+
+const unlinkedFlowNodePlan = {
+	...plan,
+	revision: plan.revision + 1,
+	steps: plan.steps.map(step => step.id === 'review' ? { ...step, flowNodeId: 'MissingReviewNode' } : step),
+};
+const unlinkedBindingReport = createMermaidChecklistBindingReport(unlinkedFlowNodePlan.flowchart, unlinkedFlowNodePlan.steps);
+assert.equal(unlinkedBindingReport.valid, false);
+assert.equal(unlinkedBindingReport.linkedStepCount, plan.steps.length - 1);
+assert.deepEqual(unlinkedBindingReport.missingFlowNodeIds, ['MissingReviewNode']);
+
+const unlinkedValidation = validatePlan(unlinkedFlowNodePlan);
+assert.equal(unlinkedValidation.valid, false);
+assert.equal(unlinkedValidation.errors.some(error => /MissingReviewNode.*not present in the Mermaid flowchart/.test(error)), true);
+
+const unlinkedSubmission = createPlanSubmissionResponse('agent/submitPlan', unlinkedFlowNodePlan, 'submitted');
+assert.equal(unlinkedSubmission.accepted, false);
+assert.equal(unlinkedSubmission.approvalReady, false);
+assert.equal(unlinkedSubmission.mutationLocked, true);
+assert.equal(unlinkedSubmission.render.linkedStepCount, plan.steps.length - 1);
+assert.deepEqual(unlinkedSubmission.render.missingFlowNodeIds, ['MissingReviewNode']);
+
+const unlinkedCanvasStatus = createPlanCanvasStatusResponse(normalizePlanCanvasStatusRequest({
+	jsonrpc: '2.0',
+	id: 'plan-canvas-unlinked-1',
+	method: 'agent/getPlanCanvasStatus',
+	params: { includeFeatures: true, includePromptBlock: false },
+}), {
+	plan: unlinkedFlowNodePlan,
+	authorization,
+	lastValidGraph: {
+		taskId: plan.taskId,
+		revision: plan.revision,
+		planHash: renderedPlanIdentity(plan).planHash,
+		nodes: plan.steps.length,
+		edges: Math.max(0, plan.steps.length - 1),
+		updatedAt: now,
+	},
+});
+assert.equal(unlinkedCanvasStatus.ready, false);
+assert.equal(unlinkedCanvasStatus.route, 'repair_bindings');
+assert.equal(unlinkedCanvasStatus.graphSource, 'fallback_checklist');
+assert.equal(unlinkedCanvasStatus.counts.linkedSteps, plan.steps.length - 1);
+assert.equal(unlinkedCanvasStatus.counts.missingFlowNodeIds, 1);
+assert.equal(unlinkedCanvasStatus.features.find(feature => feature.id === 'graph-checklist-bindings').ready, false);
 
 const brokenCanvasStatus = createPlanCanvasStatusResponse(normalizePlanCanvasStatusRequest({
 	jsonrpc: '2.0',

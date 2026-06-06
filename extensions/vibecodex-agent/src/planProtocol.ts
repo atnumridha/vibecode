@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { createLinearMermaidFlowchart, isSafeMermaidFlowchart, parseMermaidFlowchart } from './mermaidFlow';
+import { createLinearMermaidFlowchart, createMermaidChecklistBindingReport, isSafeMermaidFlowchart, parseMermaidFlowchart } from './mermaidFlow';
 import { redactSensitiveText, redactSensitiveValue } from './secretFilters';
 
 export type VibeCodexPlanStepStatus = 'pending' | 'in_progress' | 'completed' | 'blocked' | 'failed';
@@ -64,6 +64,8 @@ export interface VibeCodexPlanSubmissionResponse {
 		readonly edgeCount: number;
 		readonly stepCount: number;
 		readonly linkedStepCount: number;
+		readonly missingFlowNodeIds: readonly string[];
+		readonly duplicateFlowNodeIds: readonly string[];
 	};
 	readonly message: string;
 }
@@ -183,7 +185,9 @@ export function createPlanSubmissionResponse(method: string, candidate: unknown,
 	const plan = validation.valid ? candidate as VibeCodexPlan : undefined;
 	const partial = isRecord(candidate) ? candidate : {};
 	const flowchart = typeof partial.flowchart === 'string' ? partial.flowchart : '';
-	const flow = flowchart ? parseMermaidFlowchart(flowchart, plan?.steps) : undefined;
+	const candidateSteps = plan?.steps ?? candidateStepsForBinding(partial.steps);
+	const flow = flowchart ? parseMermaidFlowchart(flowchart, candidateSteps) : undefined;
+	const bindings = flowchart && candidateSteps.length ? createMermaidChecklistBindingReport(flowchart, candidateSteps) : undefined;
 	const identity = plan ? renderedPlanIdentity(plan) : undefined;
 	const taskId = plan?.taskId ?? stringValue(partial.taskId);
 	const revision = plan?.revision ?? (Number.isInteger(partial.revision) ? partial.revision as number : undefined);
@@ -208,7 +212,9 @@ export function createPlanSubmissionResponse(method: string, candidate: unknown,
 			nodeCount: flow?.nodes.length ?? 0,
 			edgeCount: flow?.edges.length ?? 0,
 			stepCount: plan?.steps.length ?? (Array.isArray(partial.steps) ? partial.steps.length : 0),
-			linkedStepCount: plan ? plan.steps.filter(step => flow?.nodes.some(node => node.id === step.flowNodeId)).length : 0,
+			linkedStepCount: bindings?.linkedStepCount ?? 0,
+			missingFlowNodeIds: redactSensitiveValue(bindings?.missingFlowNodeIds ?? []) as readonly string[],
+			duplicateFlowNodeIds: redactSensitiveValue(bindings?.duplicateFlowNodeIds ?? []) as readonly string[],
 		},
 		message: validation.valid && identity
 			? `Accepted ${event === 'submitted' ? 'submitted' : 'updated'} visual plan ${identity.taskId} r${identity.revision}; awaiting user approval for planHash ${identity.planHash}.`
@@ -266,15 +272,16 @@ function validateStepDependencies(steps: readonly unknown[], stepIds: ReadonlySe
 }
 
 function validateStepFlowNodes(flowchart: string, steps: readonly unknown[]): readonly string[] {
-	const flow = parseMermaidFlowchart(flowchart);
-	const graphNodeIds = new Set(flow.nodes.map(node => node.id));
+	const candidateSteps = candidateStepsForBinding(steps);
+	const bindings = createMermaidChecklistBindingReport(flowchart, candidateSteps);
+	const missingFlowNodeIds = new Set(bindings.missingFlowNodeIds);
 	const errors: string[] = [];
 	for (const [index, step] of steps.entries()) {
 		if (!isRecord(step)) {
 			continue;
 		}
 		const flowNodeId = stringValue(step.flowNodeId);
-		if (flowNodeId && identifierPattern.test(flowNodeId) && !graphNodeIds.has(flowNodeId)) {
+		if (flowNodeId && identifierPattern.test(flowNodeId) && missingFlowNodeIds.has(flowNodeId)) {
 			errors.push(`Step ${index + 1} flowNodeId "${flowNodeId}" is not present in the Mermaid flowchart.`);
 		}
 	}
@@ -417,6 +424,36 @@ function validateStep(step: unknown, index: number, stepIds: Set<string>): strin
 
 function normalizeStatus(value: unknown): VibeCodexPlanStepStatus {
 	return knownStepStatuses.has(value as VibeCodexPlanStepStatus) ? value as VibeCodexPlanStepStatus : 'pending';
+}
+
+function candidateStepsForBinding(value: unknown): readonly VibeCodexPlanStep[] {
+	if (!Array.isArray(value)) {
+		return [];
+	}
+	const steps: VibeCodexPlanStep[] = [];
+	for (const step of value) {
+		if (!isRecord(step)) {
+			continue;
+		}
+		const id = stringValue(step.id);
+		const title = stringValue(step.title);
+		const flowNodeId = stringValue(step.flowNodeId);
+		if (!id || !title || !flowNodeId || !identifierPattern.test(id) || !identifierPattern.test(flowNodeId)) {
+			continue;
+		}
+		const status = normalizeStatus(step.status);
+		const files = Array.isArray(step.files) && step.files.every(isNonEmptyString) ? step.files : undefined;
+		const dependsOn = Array.isArray(step.dependsOn) && step.dependsOn.every(isNonEmptyString) ? step.dependsOn : undefined;
+		steps.push({
+			id,
+			title,
+			status,
+			flowNodeId,
+			...(files ? { files } : {}),
+			...(dependsOn ? { dependsOn } : {}),
+		});
+	}
+	return steps;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -5,7 +5,7 @@
 
 import { VibeCodexExecutionAuthorization, authorizationMatchesPlan, executionAuthorizationSummary } from './executionAuthorization';
 import { JsonRpcId, JsonRpcMessage } from './externalBridge';
-import { parseMermaidFlowchart, validateMermaidFlowchart } from './mermaidFlow';
+import { createMermaidChecklistBindingReport, parseMermaidFlowchart, validateMermaidFlowchart } from './mermaidFlow';
 import { VibeCodexPlanRevisionSnapshot, planRevisionHistorySummary } from './planHistory';
 import { VibeCodexPlan, VibeCodexPlanStep, validatePlan } from './planProtocol';
 import { redactSensitiveText, redactSensitiveValue } from './secretFilters';
@@ -215,16 +215,13 @@ function createPlanRenderStatus(plan: VibeCodexPlan | undefined): VibeCodexPlanR
 	}
 	const mermaid = validateMermaidFlowchart(plan.flowchart);
 	const flow = parseMermaidFlowchart(plan.flowchart, plan.steps);
-	const nodeIds = new Set(flow.nodes.map(node => node.id));
-	const stepFlowNodeIds = plan.steps.map(step => step.flowNodeId).filter(Boolean);
-	const duplicateFlowNodeIds = duplicates(stepFlowNodeIds);
-	const missingFlowNodeIds = stepFlowNodeIds.filter(id => !nodeIds.has(id));
-	const stepNodeIds = new Set(stepFlowNodeIds);
+	const bindings = createMermaidChecklistBindingReport(plan.flowchart, plan.steps);
+	const stepNodeIds = new Set(bindings.stepFlowNodeIds);
 	const unlinkedNodeIds = flow.nodes.map(node => node.id).filter(id => !stepNodeIds.has(id));
-	const linkedStepCount = stepFlowNodeIds.length - missingFlowNodeIds.length;
+	const linkedStepCount = bindings.linkedStepCount;
 	const errors = [...mermaid.errors, ...flow.errors].filter((value, index, all) => all.indexOf(value) === index);
 	const graphValid = mermaid.valid && flow.valid;
-	const fallbackRequired = !graphValid || missingFlowNodeIds.length > 0 || duplicateFlowNodeIds.length > 0;
+	const fallbackRequired = !graphValid || bindings.missingFlowNodeIds.length > 0 || bindings.duplicateFlowNodeIds.length > 0;
 	return {
 		available: true,
 		safeMermaid: mermaid.valid,
@@ -235,8 +232,8 @@ function createPlanRenderStatus(plan: VibeCodexPlan | undefined): VibeCodexPlanR
 		edgeCount: flow.edges.length,
 		stepCount: plan.steps.length,
 		linkedStepCount,
-		missingFlowNodeIds: redactSensitiveValue(missingFlowNodeIds) as readonly string[],
-		duplicateFlowNodeIds: redactSensitiveValue(duplicateFlowNodeIds) as readonly string[],
+		missingFlowNodeIds: redactSensitiveValue(bindings.missingFlowNodeIds) as readonly string[],
+		duplicateFlowNodeIds: redactSensitiveValue(bindings.duplicateFlowNodeIds) as readonly string[],
 		unlinkedNodeIds: redactSensitiveValue(unlinkedNodeIds.slice(0, 32)) as readonly string[],
 		errors: redactSensitiveValue(errors) as readonly string[],
 		message: graphValid && !fallbackRequired
@@ -347,18 +344,6 @@ function uniqueStrings(values: readonly string[]): readonly string[] {
 		}
 	}
 	return result;
-}
-
-function duplicates(values: readonly string[]): readonly string[] {
-	const seen = new Set<string>();
-	const duplicate = new Set<string>();
-	for (const value of values) {
-		if (seen.has(value)) {
-			duplicate.add(value);
-		}
-		seen.add(value);
-	}
-	return [...duplicate];
 }
 
 function isPlanStatusToolCall(method: string, payload: Record<string, unknown>, args: Record<string, unknown>): boolean {
