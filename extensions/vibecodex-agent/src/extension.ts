@@ -6802,6 +6802,7 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 		this.postProviderStatus(this.currentProviderStatus(undefined, display));
 		this.postProviderCatalog(this.currentProviderCatalog(undefined, display));
 		void this.postProviderModeRouteStatus(display);
+		this.refreshRuntimeReadinessStatus();
 	}
 
 	private postProviderStatus(response?: VibeCodexProviderStatusResponse): void {
@@ -7559,6 +7560,7 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			summary: protocolStatusSummary(status),
 			status,
 		});
+		this.refreshRuntimeReadinessStatus();
 	}
 
 	private postRuntimeReadinessStatus(response: VibeCodexRuntimeReadinessStatusResponse): void {
@@ -7566,6 +7568,22 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			type: 'runtimeReadinessStatus',
 			summary: runtimeReadinessSummary(response),
 			status: response,
+		});
+	}
+
+	private refreshRuntimeReadinessStatus(): void {
+		void this.currentRuntimeReadinessStatus({
+			id: 'sidebar-runtime-readiness-refresh',
+			method: 'sidebar/runtimeReadinessStatus',
+			includeGates: true,
+			includePromptBlock: false,
+			requestedAt: Date.now(),
+		}).then(response => {
+			this.postRuntimeReadinessStatus(response);
+		}, error => {
+			this.recordProtocol('error', 'runtime readiness refresh failed', {
+				message: error instanceof Error ? error.message : String(error),
+			});
 		});
 	}
 
@@ -7661,6 +7679,7 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 			summary: backendLaunchStatusSummary(status),
 			status,
 		});
+		this.refreshRuntimeReadinessStatus();
 	}
 
 	private currentBackendLaunchStatus(request?: VibeCodexBackendLaunchStatusRequest): VibeCodexBackendLaunchStatusResponse {
@@ -8561,6 +8580,12 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 		<div data-connector-schedule-counts></div>
 		<div data-connector-schedule-routes></div>
 		<div data-connector-schedule-cards></div>
+	</section>
+	<section class="panel" data-runtime-readiness-status hidden>
+		<h3>Runtime Readiness</h3>
+		<div class="card-detail" data-runtime-readiness-summary></div>
+		<div data-runtime-readiness-cards></div>
+		<div data-runtime-readiness-gates></div>
 	</section>
 	<section class="panel" data-backend-launch-status hidden>
 		<h3>Backend Launch Readiness</h3>
@@ -9557,6 +9582,9 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 				if (event.data?.type === 'notificationStatus') {
 					renderNotificationStatus(event.data);
 				}
+				if (event.data?.type === 'runtimeReadinessStatus') {
+					renderRuntimeReadinessStatus(event.data);
+				}
 				if (event.data?.type === 'backendLaunchStatus') {
 					renderBackendLaunchStatus(event.data);
 				}
@@ -9859,6 +9887,79 @@ class VibeCodexExtensionHost implements vscode.WebviewViewProvider, vscode.Dispo
 				item.appendChild(title);
 				item.appendChild(detail);
 				itemsList.appendChild(item);
+			}
+		}
+		function renderRuntimeReadinessStatus(message) {
+			const status = message.status || {};
+			const provider = status.provider || {};
+			const backend = status.backend || {};
+			const protocol = status.protocol || {};
+			const counts = status.counts || {};
+			const gates = Array.isArray(status.gates) ? status.gates : [];
+			const blockers = Array.isArray(status.blockers) ? status.blockers : [];
+			const warnings = Array.isArray(status.warnings) ? status.warnings : [];
+			const guardrails = Array.isArray(status.guardrails) ? status.guardrails : [];
+			const section = document.querySelector('[data-runtime-readiness-status]');
+			const summary = document.querySelector('[data-runtime-readiness-summary]');
+			const cards = document.querySelector('[data-runtime-readiness-cards]');
+			const gateList = document.querySelector('[data-runtime-readiness-gates]');
+			section.hidden = !status.ok && gates.length === 0;
+			cards.textContent = '';
+			gateList.textContent = '';
+			if (section.hidden) {
+				summary.textContent = '';
+				return;
+			}
+			summary.textContent = [
+				message.summary || status.message || '',
+				'Route: ' + (status.route || 'unknown'),
+				'Ready for Plan Mode: ' + String(Boolean(status.ready)),
+				'Mutation locked: ' + String(Boolean(status.mutationLocked)),
+				'Gates: ' + (counts.passed ?? 0) + '/' + (counts.gates ?? gates.length) + ' passed',
+				status.nextAction ? 'Next: ' + status.nextAction : undefined
+			].filter(Boolean).join('\\n');
+			addStatusCard(cards, 'Startup Route', status.ready ? 'ready_for_plan' : (status.route || 'blocked'), [
+				'Ready: ' + String(Boolean(status.ready)),
+				'Mutation locked: ' + String(Boolean(status.mutationLocked)),
+				'Pending gates: ' + (counts.pending ?? 0),
+				'Failed gates: ' + (counts.failed ?? 0),
+				'Missing gates: ' + (counts.missing ?? 0)
+			].join('\\n'), !status.ready);
+			addStatusCard(cards, 'Provider / Model', provider.ready ? 'ready' : 'blocked', [
+				provider.label || provider.provider || 'Provider has not been inspected.',
+				provider.model ? 'Model: ' + provider.model : 'Model: provider default',
+				provider.local ? 'Local/open-source capable' : undefined,
+				provider.openAiCompatible ? 'OpenAI-compatible API' : undefined,
+				provider.apiKeyConfigured ? 'Credentials: configured via ' + (provider.apiKeyStorage || 'configured') : 'Credentials: not configured or not required'
+			].filter(Boolean).join('\\n'), provider.ready === false);
+			addStatusCard(cards, 'Backend Bridge', backend.connected ? 'connected' : backend.launchReady ? 'launch-ready' : 'blocked', [
+				'Transport: ' + (backend.selectedTransport || 'unknown'),
+				'Framing: ' + (backend.framing || 'unknown'),
+				'Launch ready: ' + String(Boolean(backend.launchReady)),
+				'Connected: ' + String(Boolean(backend.connected)),
+				backend.bridgeState ? 'State: ' + backend.bridgeState : undefined
+			].filter(Boolean).join('\\n'), !backend.launchReady || !backend.connected);
+			addStatusCard(cards, 'Protocol / Handshake', protocol.available && protocol.handshakeReady && protocol.backendAccepted ? 'ready' : 'blocked', [
+				'Available: ' + String(Boolean(protocol.available)),
+				'Health: ' + (protocol.health || 'unknown'),
+				'Handshake: ' + (protocol.handshake || 'unknown'),
+				'Transport ready: ' + String(Boolean(protocol.transportReady)),
+				'Handshake ready: ' + String(Boolean(protocol.handshakeReady)),
+				'Backend accepted: ' + String(Boolean(protocol.backendAccepted)),
+				'Errors: ' + (protocol.errors ?? 0),
+				'Pending requests: ' + (protocol.pendingRequests ?? 0)
+			].join('\\n'), !protocol.available || !protocol.handshakeReady || !protocol.backendAccepted || (protocol.errors ?? 0) > 0);
+			if (blockers.length) {
+				addStatusCard(cards, 'Runtime Blockers', String(blockers.length), blockers.slice(0, 8).join('\\n'), true);
+			}
+			if (warnings.length) {
+				addStatusCard(cards, 'Runtime Warnings', String(warnings.length), warnings.slice(0, 6).join('\\n'), false);
+			}
+			if (guardrails.length) {
+				addStatusCard(cards, 'Read-Only Runtime Guardrails', String(guardrails.length), guardrails.slice(0, 5).join('\\n'), false);
+			}
+			for (const gate of gates.slice(0, 8)) {
+				addStatusCard(gateList, gate.title || gate.id || 'Runtime gate', gate.status || 'unknown', gate.detail || '', gate.status !== 'passed');
 			}
 		}
 		function renderBackendLaunchStatus(message) {

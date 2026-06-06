@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 
 const { createBackendLaunchStatusResponse, normalizeBackendLaunchStatusRequest } = require('../out/backendLaunchStatusProtocol');
 const { normalizeBrowserActionRequest } = require('../out/browserActionProtocol');
@@ -686,6 +687,11 @@ assert.equal(runtimeReadinessStatus.backend.connected, true);
 assert.equal(runtimeReadinessStatus.protocol.handshakeReady, true);
 assert.equal(runtimeReadinessStatus.promptBlock.includes('runtime_readiness_status'), true);
 assert.equal(JSON.stringify(runtimeReadinessStatus).includes('sk-live-secret-value'), false);
+const extensionRuntimeSource = fs.readFileSync(require.resolve('../out/extension.js'), 'utf8');
+assert.equal(extensionRuntimeSource.includes("type === 'runtimeReadinessStatus'"), true);
+assert.equal(extensionRuntimeSource.includes('data-runtime-readiness-status'), true);
+assert.equal(extensionRuntimeSource.includes('renderRuntimeReadinessStatus'), true);
+assert.equal(extensionRuntimeSource.includes('refreshRuntimeReadinessStatus'), true);
 
 const unsupportedHandshakeProtocolStatus = createProtocolStatusResponse(normalizeProtocolStatusRequest({
 	jsonrpc: '2.0',
