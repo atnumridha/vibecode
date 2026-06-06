@@ -184,6 +184,7 @@ export function createExtensionInstallStatusResponse(request: VibeCodexExtension
 	const blockers = createBlockers(manifest, features);
 	const warnings = createWarnings(features, commands, activationEvents, configurationKeys);
 	const state = stateFor(manifest, features, blockers);
+	const packageFileName = publisher && name && version ? `${publisher}.${name}-${version}.vsix` : 'vibecodex.agent.vsix';
 	const manifestSummary: VibeCodexExtensionManifestSummary = {
 		...(extensionId ? { extensionId: redactSensitiveText(extensionId) } : {}),
 		...(publisher ? { publisher: redactSensitiveText(publisher) } : {}),
@@ -195,7 +196,7 @@ export function createExtensionInstallStatusResponse(request: VibeCodexExtension
 		extensionKind,
 		...(input.extensionMode ? { extensionMode: redactSensitiveText(input.extensionMode) } : {}),
 		...(input.extensionUri ? { extensionUri: redactSensitiveText(input.extensionUri) } : {}),
-		installCommand: 'code --install-extension extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix',
+		installCommand: `code --install-extension extensions/vibecodex-agent/${redactSensitiveText(packageFileName)}`,
 	};
 	const responseWithoutMessage = {
 		ok: !!manifest,

@@ -77,6 +77,7 @@ const { createWorkspaceSandboxStatusResponse, normalizeWorkspaceSandboxStatusReq
 const { createWorkflowStatusResponse, normalizeWorkflowStatusRequest } = require('../out/workflowStatusProtocol');
 const { createSessionExportResponse, normalizeSessionExportRequest } = require('../out/sessionExportProtocol');
 const { createSessionHistoryStatusResponse, normalizeSessionHistoryStatusRequest } = require('../out/sessionHistoryStatusProtocol');
+const { validateExtensionManifest } = require('../scripts/validate-extension-manifest.cjs');
 const packageManifest = require('../package.json');
 
 const now = Date.now();
@@ -398,6 +399,8 @@ assert.match(contributedViewKey, contributionIdPattern);
 assert.match(contributedViewId, contributionIdPattern);
 assert.equal(contributedViewKey, contributedContainerId);
 assert.equal(packageManifest.activationEvents.includes(`onView:${contributedViewId}`), true);
+assert.deepEqual(validateExtensionManifest(packageManifest), []);
+assert.equal(extensionInstallStatus.manifest.installCommand.includes(`vibecodex.agent-${packageManifest.version}.vsix`), true);
 assert.equal(extensionInstallStatus.commands.includes('vibecodex.extension.inlinePrompt'), true);
 for (const command of [
 	'vibecodex.extension.planMode',
@@ -443,6 +446,7 @@ const invalidDottedViewStatus = createExtensionInstallStatusResponse(normalizeEx
 assert.equal(invalidDottedViewStatus.ready, false);
 assert.equal(invalidDottedViewStatus.features.find(feature => feature.id === 'vs-code-contribution-ids').ready, false);
 assert.ok(invalidDottedViewStatus.blockers.some(blocker => blocker.includes('VS Code contribution id schema')));
+assert.ok(validateExtensionManifest(invalidDottedViewManifest).some(error => error.includes('contributes.viewsContainers.activitybar[0].id')));
 
 const codexConfig = {
 	found: true,
