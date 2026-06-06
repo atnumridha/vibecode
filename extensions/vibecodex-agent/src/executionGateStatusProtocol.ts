@@ -43,6 +43,7 @@ export interface VibeCodexExecutionGateStatusResponse {
 	readonly route: VibeCodexExecutionGateRoute;
 	readonly ready: boolean;
 	readonly blocked: boolean;
+	readonly mutationLocked: boolean;
 	readonly request: {
 		readonly taskId?: string;
 		readonly revision?: number;
@@ -207,6 +208,7 @@ export function createExecutionGateStatusResponse(request: VibeCodexExecutionGat
 		authorizationSummary: executionAuthorizationSummary(input.authorization),
 	});
 	const nextAction = nextActionFor(route, toolCall, blockers);
+	const mutationLocked = mutationLockedForRoute(route, !!input.plan && planValidation.valid && approved);
 	const responseWithoutPrompt = {
 		ok: true,
 		source: 'externalExtension' as const,
@@ -214,6 +216,7 @@ export function createExecutionGateStatusResponse(request: VibeCodexExecutionGat
 		route,
 		ready,
 		blocked,
+		mutationLocked,
 		request: {
 			...(request.taskId ? { taskId: request.taskId } : {}),
 			...(request.revision !== undefined ? { revision: request.revision } : {}),
@@ -237,6 +240,7 @@ export function createExecutionGateStatusResponse(request: VibeCodexExecutionGat
 		guardrails: [
 			'Execution gate status is read-only and never approves plans, creates approval cards, runs terminals, submits diffs, accepts diffs, restores checkpoints, or mutates files.',
 			'Readiness is only a routing decision; mutating work still flows through exact visual-plan authorization, visible user approvals, diff review, workspace sandbox checks, and checkpoints.',
+			'mutationLocked=true means no mutating terminal, file, browser, MCP, web, diff, checkpoint, or parallel-worktree action may proceed from this gate response.',
 			'Approval tokens and raw tool arguments are not returned; all summaries, blockers, and prompt blocks are redacted.',
 		],
 		message: executionGateStatusMessage(route, responseToolName, blockers),
@@ -441,6 +445,7 @@ function executionGatePromptBlock(response: Omit<VibeCodexExecutionGateStatusRes
 		route: response.route,
 		ready: response.ready,
 		blocked: response.blocked,
+		mutationLocked: response.mutationLocked,
 		request: response.request,
 		plan: response.plan,
 		pending: response.pending,
@@ -449,6 +454,13 @@ function executionGatePromptBlock(response: Omit<VibeCodexExecutionGateStatusRes
 		nextAction: response.nextAction,
 		note: 'This gate status does not execute or approve any tool call.',
 	}), null, 2);
+}
+
+function mutationLockedForRoute(route: VibeCodexExecutionGateRoute, mutationReady: boolean): boolean {
+	if (route === 'run_read_only_tool') {
+		return false;
+	}
+	return !mutationReady;
 }
 
 function extractCallArguments(payload: Record<string, unknown>, outerArgs: Record<string, unknown>, statusToolCall: boolean): Record<string, unknown> {

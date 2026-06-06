@@ -2,7 +2,7 @@
   "name": "agent",
   "displayName": "Vibe Codex Agent",
   "description": "Vibe Codex agent surface built into VibeCode and installable as a VS Code VSIX.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "vibecodex",
   "license": "MIT",
   "engines": {

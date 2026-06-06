@@ -1184,10 +1184,77 @@ const executionGateStatus = createExecutionGateStatusResponse(normalizeExecution
 });
 assert.equal(executionGateStatus.ready, true);
 assert.equal(executionGateStatus.blocked, false);
+assert.equal(executionGateStatus.mutationLocked, false);
 assert.equal(executionGateStatus.route, 'request_user_approval');
 assert.equal(executionGateStatus.plan.mutationReady, true);
 assert.equal(executionGateStatus.toolCall.route, 'request_approval');
 assert.equal(JSON.stringify(executionGateStatus).includes('sk-live-secret-value'), false);
+
+const unapprovedExecutionGateStatus = createExecutionGateStatusResponse(normalizeExecutionGateStatusRequest({
+	jsonrpc: '2.0',
+	id: 'execution-gate-unapproved-1',
+	method: 'agent/getExecutionGateStatus',
+	params: {
+		taskId: plan.taskId,
+		revision: plan.revision,
+		toolName: 'execute_command',
+		arguments: {
+			command: 'npm test',
+			cwd: '.',
+			verificationCheckId: 'npm-test',
+		},
+		includeToolCall: true,
+		includePromptBlock: true,
+	},
+}), {
+	plan,
+	toolCatalog: createToolCatalog({
+		modePolicy: modePolicyFor('agent'),
+		hasExecutionAuthorization: false,
+		bridgeConnected: true,
+	}),
+	approvals: [],
+	activeDiffReview: diffReview,
+});
+assert.equal(unapprovedExecutionGateStatus.ready, false);
+assert.equal(unapprovedExecutionGateStatus.blocked, true);
+assert.equal(unapprovedExecutionGateStatus.mutationLocked, true);
+assert.equal(unapprovedExecutionGateStatus.route, 'approve_exact_plan');
+assert.equal(unapprovedExecutionGateStatus.plan.mutationReady, false);
+assert.equal(unapprovedExecutionGateStatus.gates.find(gate => gate.id === 'exact_plan_approval').status, 'pending');
+assert.match(unapprovedExecutionGateStatus.nextAction, /Approve the exact rendered visual plan revision/);
+assert.equal(unapprovedExecutionGateStatus.promptBlock.includes('"mutationLocked": true'), true);
+
+const readOnlyExecutionGateStatus = createExecutionGateStatusResponse(normalizeExecutionGateStatusRequest({
+	jsonrpc: '2.0',
+	id: 'execution-gate-readonly-1',
+	method: 'agent/getExecutionGateStatus',
+	params: {
+		toolName: 'read_file',
+		arguments: {
+			path: 'src/agent.ts',
+			start_line: 1,
+			end_line: 10,
+		},
+		includeToolCall: true,
+		includePromptBlock: true,
+	},
+}), {
+	plan,
+	toolCatalog: createToolCatalog({
+		modePolicy: modePolicyFor('plan'),
+		hasExecutionAuthorization: false,
+		bridgeConnected: true,
+	}),
+	approvals: [],
+	activeDiffReview: undefined,
+});
+assert.equal(readOnlyExecutionGateStatus.ready, true);
+assert.equal(readOnlyExecutionGateStatus.blocked, false);
+assert.equal(readOnlyExecutionGateStatus.mutationLocked, false);
+assert.equal(readOnlyExecutionGateStatus.route, 'run_read_only_tool');
+assert.equal(readOnlyExecutionGateStatus.toolCall.route, 'call_read_only_tool');
+assert.equal(readOnlyExecutionGateStatus.promptBlock.includes('"mutationLocked": false'), true);
 
 const terminalControlStatus = createTerminalControlResponse(normalizeTerminalControlRequest({
 	jsonrpc: '2.0',
