@@ -34,6 +34,7 @@ const { createHappyPathStatusResponse, normalizeHappyPathStatusRequest } = requi
 const { createInlinePromptStatusResponse, normalizeInlinePromptStatusRequest } = require('../out/inlinePromptStatusProtocol');
 const { createMcpStatusResponse, normalizeMcpStatusRequest } = require('../out/mcpStatusProtocol');
 const { modePolicyFor } = require('../out/modePolicy');
+const { createModeStatusResponse, normalizeModeStatusRequest } = require('../out/modeStatusProtocol');
 const { createParallelAgentPlan, withParallelThreadStatus } = require('../out/multiAgent');
 const { createParallelLaneExecutionStatusResponse, normalizeParallelLaneExecutionStatusRequest } = require('../out/parallelLaneExecutionStatusProtocol');
 const { createParallelMergeRequest, createParallelReview, normalizeParallelResultMessage, upsertParallelResult } = require('../out/parallelReview');
@@ -646,6 +647,40 @@ assert.equal(JSON.stringify(submitted).includes('sk-live-secret-value'), false);
 const authorization = createExecutionAuthorization(plan);
 assert.equal(authorizationMatchesPlan(authorization, plan), true);
 assert.equal(authorization.planHash, renderedPlanIdentity(plan).planHash);
+
+const modeStatus = createModeStatusResponse(normalizeModeStatusRequest({
+	jsonrpc: '2.0',
+	id: 'mode-status-1',
+	method: 'agent/getModeStatus',
+	params: { includeModes: true, includeInstructions: true, includePromptBlock: true },
+}), {
+	modePolicy: modePolicyFor('agent'),
+	authorization,
+	activePlan: plan,
+});
+assert.equal(modeStatus.current.mode, 'agent');
+assert.equal(modeStatus.current.readOnly, false);
+assert.equal(modeStatus.authorization.activePlanMatches, true);
+assert.equal(modeStatus.counts.modes, 8);
+assert.equal(modeStatus.counts.readOnlyModes, 4);
+assert.equal(modeStatus.counts.executionModes, 4);
+assert.equal(modeStatus.modes.some(mode => mode.mode === 'plan' && mode.readOnly), true);
+assert.equal(modeStatus.modes.some(mode => mode.mode === 'custom' && !mode.readOnly), true);
+assert.equal(JSON.stringify(modeStatus).includes('sk-live-secret-value'), false);
+
+const readOnlyModeStatus = createModeStatusResponse(normalizeModeStatusRequest({
+	jsonrpc: '2.0',
+	id: 'mode-status-plan-1',
+	method: 'item/tool/call',
+	params: { tool: 'mode_status', arguments: { includeModes: true, includePromptBlock: true } },
+}), {
+	modePolicy: modePolicyFor('plan'),
+	authorization,
+	activePlan: plan,
+});
+assert.equal(readOnlyModeStatus.current.mode, 'plan');
+assert.equal(readOnlyModeStatus.current.readOnly, true);
+assert.equal(readOnlyModeStatus.authorization.activePlanMatches, true);
 
 const inlinePromptSession = {
 	id: 'inline-1',
@@ -1594,6 +1629,7 @@ const deliveryBarInput = {
 	protocolStatus,
 	extensionInstallStatus,
 	inlinePromptStatus,
+	modeStatus,
 	taskStartStatus,
 	externalIntakeStatus,
 	sessionHistoryStatus,
@@ -1627,6 +1663,7 @@ const deliveryBarBase = createDeliveryBarState(deliveryBarInput);
 assert.equal(deliveryBarBase.ready, true);
 assert.equal(deliveryBarBase.blocked, false);
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'native-prompt-surface').status, 'passed');
+assert.equal(deliveryBarBase.checks.find(check => check.id === 'mode-readiness').status, 'passed');
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'bridge').status, 'passed');
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'plan-interaction').status, 'passed');
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'guidance').status, 'passed');
@@ -1636,6 +1673,13 @@ assert.equal(deliveryBarBase.checks.find(check => check.id === 'diff-protocol').
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'rollback').status, 'passed');
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'parallel').status, 'passed');
 assert.equal(deliveryBarBase.checks.find(check => check.id === 'completion-handoff').status, 'skipped');
+
+const deliveryBarReadOnlyMode = createDeliveryBarState({
+	...deliveryBarInput,
+	modeStatus: readOnlyModeStatus,
+});
+assert.equal(deliveryBarReadOnlyMode.blocked, true);
+assert.equal(deliveryBarReadOnlyMode.checks.find(check => check.id === 'mode-readiness').status, 'failed');
 
 const checkpointStatus = createCheckpointStatusResponse(normalizeCheckpointStatusRequest({
 	jsonrpc: '2.0',

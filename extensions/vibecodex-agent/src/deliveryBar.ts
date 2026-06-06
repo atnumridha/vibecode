@@ -20,6 +20,7 @@ import type { VibeCodexGuidanceSelectionResponse } from './guidanceSelectionProt
 import type { VibeCodexGuidanceStatusResponse } from './guidanceStatusProtocol';
 import type { VibeCodexInlinePromptStatusResponse } from './inlinePromptStatusProtocol';
 import type { VibeCodexMcpStatusResponse } from './mcpStatusProtocol';
+import type { VibeCodexModeStatusResponse } from './modeStatusProtocol';
 import type { VibeCodexParallelPlan } from './multiAgent';
 import type { VibeCodexParallelMergeRequest, VibeCodexParallelReview } from './parallelReview';
 import type { VibeCodexAcceptanceCriteriaStatusResponse } from './acceptanceCriteriaStatusProtocol';
@@ -82,6 +83,7 @@ export interface VibeCodexDeliveryBarInput {
 	readonly protocolStatus?: VibeCodexProtocolStatusResponse;
 	readonly extensionInstallStatus?: VibeCodexExtensionInstallStatusResponse;
 	readonly inlinePromptStatus?: VibeCodexInlinePromptStatusResponse;
+	readonly modeStatus?: VibeCodexModeStatusResponse;
 	readonly taskStartStatus?: VibeCodexTaskStartStatusResponse;
 	readonly externalIntakeStatus?: VibeCodexExternalIntakeStatusResponse;
 	readonly sessionHistoryStatus?: VibeCodexSessionHistoryStatusResponse;
@@ -119,6 +121,7 @@ export function createDeliveryBarState(input: VibeCodexDeliveryBarInput): VibeCo
 	const checks = [
 		planCheck(input.plan),
 		nativePromptSurfaceCheck(input),
+		modeReadinessCheck(input.modeStatus),
 		bridgeCheck(input.backendLaunchStatus, input.protocolStatus),
 		planCanvasCheck(input.planCanvasStatus),
 		planInteractionCheck(input),
@@ -210,7 +213,7 @@ function nativePromptSurfaceBlockers(input: VibeCodexDeliveryBarInput): readonly
 		if (!install.ready || install.state !== 'ready') {
 			blockers.push(install.blockers[0] ?? install.message);
 		}
-		const missingFeatures = ['inline-shortcut', 'menu-entrypoints', 'sidebar-view', 'provider-backend-config', 'webview-security']
+		const missingFeatures = ['inline-shortcut', 'menu-entrypoints', 'mode-entrypoints', 'sidebar-view', 'provider-backend-config', 'webview-security']
 			.filter(id => install.features?.find(feature => feature.id === id)?.ready !== true);
 		if (missingFeatures.length) {
 			blockers.push(`Extension install features not ready: ${missingFeatures.join(', ')}.`);
@@ -285,6 +288,43 @@ function nativePromptSurfacePending(input: VibeCodexDeliveryBarInput): readonly 
 		pending.push('Session history is available but has no planning, approved, execution, review, rollback, or completed session state yet.');
 	}
 	return pending;
+}
+
+function modeReadinessCheck(status: VibeCodexModeStatusResponse | undefined): VibeCodexDeliveryBarCheck {
+	if (!status) {
+		return {
+			id: 'mode-readiness',
+			title: 'Mode readiness',
+			required: false,
+			status: 'skipped',
+			detail: 'No mode readiness status has been requested yet.',
+		};
+	}
+	const requiredModes = ['plan', 'ask', 'manual', 'act', 'agent', 'debug', 'review', 'custom'];
+	const availableModes = new Set((status.modes ?? []).map(mode => mode.mode));
+	const missingModes = requiredModes.filter(mode => !availableModes.has(mode));
+	const blockers = [
+		missingModes.length ? `Mode matrix is missing: ${missingModes.join(', ')}.` : undefined,
+		status.counts.modes < requiredModes.length ? `Mode matrix has only ${status.counts.modes}/${requiredModes.length} modes.` : undefined,
+		status.counts.readOnlyModes < 4 || status.counts.executionModes < 4 ? `Mode matrix must expose four read-only and four execution-capable modes; got ${status.counts.readOnlyModes}/${status.counts.executionModes}.` : undefined,
+		!status.current.requiresVisualPlan ? `${status.current.label} Mode does not require a visual plan.` : undefined,
+		status.current.readOnly ? `${status.current.label} Mode is read-only; switch to Act, Agent, Debug, or Custom before final execution readiness.` : undefined,
+		!status.current.readOnly && !status.current.requiresPlanApproval ? `${status.current.label} Mode does not require exact plan approval before mutation.` : undefined,
+		!status.current.readOnly && status.current.allowedActions.length === 0 ? `${status.current.label} Mode has no execution actions available.` : undefined,
+	].filter((item): item is string => !!item).map(redactSensitiveText);
+	const pending = [
+		!status.authorization.approved || !status.authorization.activePlanMatches ? status.nextAction : undefined,
+	].filter((item): item is string => !!item).map(redactSensitiveText);
+	const ready = blockers.length === 0 && pending.length === 0;
+	return {
+		id: 'mode-readiness',
+		title: 'Mode readiness',
+		required: true,
+		status: ready ? 'passed' : blockers.length ? 'failed' : 'pending',
+		detail: ready
+			? `${status.current.label} Mode is execution-capable with exact approved visual-plan authorization; all ${requiredModes.length} standard modes are available.`
+			: [...blockers, ...pending].slice(0, 4).join('; '),
+	};
 }
 
 function approvalCheck(plan: VibeCodexDeliveryBarInput['plan'], hasExecutionAuthorization: boolean): VibeCodexDeliveryBarCheck {
