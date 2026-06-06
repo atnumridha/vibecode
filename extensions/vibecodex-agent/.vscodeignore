@@ -3,6 +3,7 @@ scripts/**
 test/**
 tsconfig.json
 *.vsix
+*.vsix.sha256
 **/*.map
 **/*.ts
 .vscode/**

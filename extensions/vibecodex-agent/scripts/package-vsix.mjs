@@ -4,6 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,4 +24,9 @@ await vsce.createVSIX({
 	allowUnusedFilesPattern: true
 });
 
+const checksum = createHash('sha256').update(await readFile(packagePath)).digest('hex');
+const checksumPath = `${packagePath}.sha256`;
+await writeFile(checksumPath, `${checksum}  ${packageJson.publisher}.${packageJson.name}-${packageJson.version}.vsix\n`);
+
 console.log(packagePath);
+console.log(checksumPath);

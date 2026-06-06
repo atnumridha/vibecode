@@ -87,8 +87,9 @@ VibeCode builds load this extension identity as `vibecodex.agent` and set it as 
 External VS Code installs use the same VSIX:
 
 1. Run `npm --prefix extensions/vibecodex-agent run package-vsix` from the repository root.
-2. Install `extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix` with `code --install-extension extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix`.
-3. Configure `vibeCodex.extension.codexCommand` and, when needed, `vibeCodex.extension.transport`, `vibeCodex.extension.pipePath`, `vibeCodex.extension.websocketUrl`, or `vibeCodex.extension.messageFraming`. Existing Codex CLI login and `~/.codex/config.toml` provider defaults are picked up automatically.
+2. Verify the generated `extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix.sha256` sidecar before distributing the VSIX.
+3. Install `extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix` with `code --install-extension extensions/vibecodex-agent/vibecodex.agent-0.1.0.vsix`.
+4. Configure `vibeCodex.extension.codexCommand` and, when needed, `vibeCodex.extension.transport`, `vibeCodex.extension.pipePath`, `vibeCodex.extension.websocketUrl`, or `vibeCodex.extension.messageFraming`. Existing Codex CLI login and `~/.codex/config.toml` provider defaults are picked up automatically.
 
 The extension declares limited untrusted-workspace support: read-only planning and context UI can load, while mutation, terminal execution, and parallel worktree preparation stay behind approval and trust gates.
 
@@ -135,7 +136,7 @@ The Protocol Transport Readiness section in Protocol Health mirrors the configur
 
 ## Packaging
 
-Run `npm --prefix extensions/vibecodex-agent run package-vsix` from the repository root to build the external VSIX.
+Run `npm --prefix extensions/vibecodex-agent run package-vsix` from the repository root to build the external VSIX and its `.vsix.sha256` checksum sidecar.
 Run `npm --prefix extensions/vibecodex-agent run verify` to typecheck and package the installable extension in one pass.
 
 ## Testing
